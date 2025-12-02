@@ -8,9 +8,9 @@ import sys
 
 class SchedulingStrategy(Enum):
     """调度策略枚举"""
-    GREEDY_NEAREST = "贪心最近"
-    BALANCED_LOAD = "负载均衡"
-    HUNGARIAN = "匈牙利算法"
+    GREEDY_NEAREST = "Greedy Nearest"
+    BALANCED_LOAD = "Balanced Load"
+    HUNGARIAN = "Hungarian"
 
 
 class SchedulerAgent:
@@ -44,8 +44,8 @@ class SchedulerAgent:
         if not orders:
             return []
         
-        # 筛选空闲车辆
-        idle_cars = [car for car in cars if car.is_idle()]
+        # 筛选可用车辆（空闲且电量充足）
+        idle_cars = [car for car in cars if car.is_available_for_task()]
         
         if not idle_cars:
             return []
@@ -156,7 +156,8 @@ class SchedulerAgent:
     
     def _hungarian_schedule(self, cars: List, orders: List, grid_env) -> List[Tuple]:
         """
-        匈牙利算法策略：最优匹配（预留接口，简化实现）
+        匈牙利算法策略：最优匹配
+        使用scipy.optimize.linear_sum_assignment实现全局最优分配
         Args:
             cars: 空闲车辆列表
             orders: 待分配订单列表
@@ -164,10 +165,57 @@ class SchedulerAgent:
         Returns:
             分配结果列表
         """
-        # 简化实现：使用贪心策略
-        # 真正的匈牙利算法需要引入 scipy 或自己实现
-        # 这里提供接口，可以后续扩展
-        return self._greedy_nearest_schedule(cars, orders, grid_env)
+        if not cars or not orders:
+            return []
+        
+        try:
+            from scipy.optimize import linear_sum_assignment
+            import numpy as np
+        except ImportError:
+            # 如果scipy未安装，回退到贪心策略
+            print("⚠️ scipy未安装，匈牙利算法回退到贪心策略")
+            return self._greedy_nearest_schedule(cars, orders, grid_env)
+        
+        # 构建成本矩阵：车辆到订单取货点的距离
+        num_cars = len(cars)
+        num_orders = len(orders)
+        
+        # 创建成本矩阵（车辆 x 订单）
+        cost_matrix = np.zeros((num_cars, num_orders))
+        
+        for i, car in enumerate(cars):
+            for j, order in enumerate(orders):
+                # 计算车辆当前位置到订单取货点的距离
+                distance = grid_env.calculate_distance(car.position, order.pickup_point)
+                cost_matrix[i, j] = distance
+        
+        # 使用匈牙利算法求解最优分配
+        # linear_sum_assignment返回行索引和列索引
+        row_indices, col_indices = linear_sum_assignment(cost_matrix)
+        
+        # 构建分配结果
+        assignments = []
+        for car_idx, order_idx in zip(row_indices, col_indices):
+            car = cars[car_idx]
+            order = orders[order_idx]
+            assignments.append((
+                car.car_id,
+                order.order_id,
+                order.pickup_point,
+                order.delivery_point
+            ))
+            self.total_assignments += 1
+        
+        # 记录分配历史
+        if assignments:
+            self.assignment_history.append({
+                'assignments': assignments,
+                'strategy': self.strategy.value,
+                'cost_matrix_shape': cost_matrix.shape,
+                'total_cost': cost_matrix[row_indices, col_indices].sum()
+            })
+        
+        return assignments
     
     def step(self):
         """执行一步更新（预留接口）"""

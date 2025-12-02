@@ -1,182 +1,157 @@
 #!/usr/bin/env python3
 """
-系统测试脚本 - 验证所有模块正常工作
+系统集成测试 - 验证所有模块协同工作
+使用 pytest 框架进行自动化测试
+
+运行方式:
+    pytest test_system.py -v
+    pytest test_system.py -v --cov=. --cov-report=html
 """
 
-import sys
-import time
+import pytest
+
 
 def test_imports():
     """测试所有模块导入"""
-    print("📦 测试模块导入...")
-    try:
-        from agents import CarAgent, OrderAgent, SchedulerAgent
-        from env import GridEnvironment, PathFinding
-        from core import SimulationContext, Simulation
-        print("✅ 所有模块导入成功")
-        return True
-    except Exception as e:
-        print(f"❌ 模块导入失败: {e}")
-        return False
+    from agents import CarAgent, OrderAgent, SchedulerAgent
+    from env import GridEnvironment, PathFinding
+    from core import SimulationContext, Simulation
+    
+    # 验证类是否正确导入
+    assert CarAgent is not None
+    assert OrderAgent is not None
+    assert SchedulerAgent is not None
+    assert GridEnvironment is not None
+    assert PathFinding is not None
+    assert SimulationContext is not None
+    assert Simulation is not None
 
 def test_environment():
     """测试环境模块"""
-    print("\n🗺️ 测试环境模块...")
-    try:
-        from env import GridEnvironment, PathFinding
-        
-        # 创建环境
-        env = GridEnvironment(size=15)
-        print(f"  ✅ 地图创建成功 ({env.size}x{env.size})")
-        
-        # 测试路径规划
-        pathfinder = PathFinding(env.grid)
-        path = pathfinder.a_star((0, 0), (14, 14))
-        if path:
-            print(f"  ✅ A*路径规划成功 (路径长度: {len(path)})")
-        else:
-            print("  ⚠️ 路径规划返回空")
-        
-        return True
-    except Exception as e:
-        print(f"  ❌ 环境模块测试失败: {e}")
-        return False
+    from env import GridEnvironment, PathFinding
+    
+    # 创建环境
+    env = GridEnvironment(size=15)
+    assert env is not None
+    assert env.size == 15
+    assert len(env.grid) == 15
+    assert len(env.grid[0]) == 15
+    
+    # 测试路径规划
+    pathfinder = PathFinding(env.grid)
+    assert pathfinder is not None
+    
+    path = pathfinder.a_star((0, 0), (14, 14))
+    assert path is not None, "A*路径规划应该找到一条路径"
+    assert len(path) > 0, "路径长度应该大于0"
+    assert path[0] == (0, 0), "路径起点应该是(0, 0)"
+    assert path[-1] == (14, 14), "路径终点应该是(14, 14)"
 
 def test_agents():
     """测试智能体模块"""
-    print("\n🤖 测试智能体模块...")
-    try:
-        from agents import CarAgent, OrderAgent, SchedulerAgent
-        
-        # 测试车辆智能体
-        car = CarAgent(car_id=0, initial_position=(0, 0))
-        print(f"  ✅ 车辆智能体创建成功 (ID: {car.car_id})")
-        
-        # 测试订单智能体
-        order_agent = OrderAgent()
-        order_id = order_agent.create_order((0, 0), (10, 10))
-        print(f"  ✅ 订单智能体创建成功 (订单ID: {order_id})")
-        
-        # 测试调度智能体
-        scheduler = SchedulerAgent()
-        print(f"  ✅ 调度智能体创建成功 (策略: {scheduler.strategy.value})")
-        
-        return True
-    except Exception as e:
-        print(f"  ❌ 智能体模块测试失败: {e}")
-        return False
+    from agents import CarAgent, OrderAgent, SchedulerAgent, CarState
+    
+    # 测试车辆智能体
+    car = CarAgent(car_id=0, initial_position=(0, 0))
+    assert car is not None
+    assert car.car_id == 0
+    assert car.position == (0, 0)
+    assert car.state == CarState.IDLE
+    assert car.is_idle() == True
+    
+    # 测试订单智能体
+    order_agent = OrderAgent()
+    assert order_agent is not None
+    order_id = order_agent.create_order((0, 0), (10, 10))
+    assert order_id == 1, "第一个订单ID应该是1"
+    assert len(order_agent.orders) == 1
+    assert len(order_agent.pending_orders) == 1
+    
+    # 测试调度智能体
+    scheduler = SchedulerAgent()
+    assert scheduler is not None
+    assert scheduler.strategy is not None
+    assert scheduler.total_assignments == 0
 
 def test_simulation():
     """测试仿真系统"""
-    print("\n⚙️ 测试仿真系统...")
-    try:
-        from core import SimulationContext
-        
-        # 创建仿真上下文
-        context = SimulationContext(grid_size=15, num_cars=3)
-        print(f"  ✅ 仿真上下文创建成功 (车辆数: {len(context.cars)})")
-        
-        # 添加订单
-        order_id = context.add_random_order()
-        print(f"  ✅ 订单添加成功 (订单ID: {order_id})")
-        
-        # 执行几步仿真
-        for i in range(5):
-            context.step()
-        print(f"  ✅ 仿真执行成功 (步数: {context.current_step})")
-        
-        # 获取统计
-        stats = context.get_statistics()
-        print(f"  ✅ 统计数据获取成功")
-        
-        return True
-    except Exception as e:
-        print(f"  ❌ 仿真系统测试失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    from core import SimulationContext
+    
+    # 创建仿真上下文
+    context = SimulationContext(grid_size=15, num_cars=3)
+    assert context is not None
+    assert len(context.cars) == 3, "应该创建3辆车"
+    assert context.current_step == 0
+    assert context.total_completed_orders == 0
+    
+    # 添加订单
+    initial_orders = len(context.order_agent.orders)
+    order_id = context.add_random_order()
+    assert order_id is not None, "应该成功创建订单"
+    assert len(context.order_agent.orders) == initial_orders + 1
+    
+    # 执行几步仿真
+    for i in range(5):
+        result = context.step()
+        assert result == True, f"第{i+1}步仿真应该成功"
+    assert context.current_step == 5, "应该执行了5步"
+    
+    # 获取统计
+    stats = context.get_statistics()
+    assert stats is not None
+    assert 'current_step' in stats
+    assert 'total_completed_orders' in stats
+    assert 'cars' in stats
+    assert len(stats['cars']) == 3
 
 def test_full_workflow():
     """测试完整工作流"""
-    print("\n🔄 测试完整工作流...")
-    try:
-        from core import SimulationContext
-        
-        # 创建系统
-        context = SimulationContext(grid_size=15, num_cars=2)
-        
-        # 添加多个订单
-        for i in range(3):
-            context.add_random_order()
-        print(f"  ✅ 添加了3个订单")
-        
-        # 运行10步
-        completed_before = context.total_completed_orders
-        for i in range(10):
-            context.step()
-        completed_after = context.total_completed_orders
-        
-        print(f"  ✅ 运行10步成功")
-        print(f"  📊 完成订单: {completed_after - completed_before}个")
-        
-        # 检查车辆状态
-        for car in context.cars:
-            report = car.report()
-            print(f"  🚗 车辆{car.car_id}: {report['state']}")
-        
-        return True
-    except Exception as e:
-        print(f"  ❌ 完整工作流测试失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    from core import SimulationContext
+    
+    # 创建系统
+    context = SimulationContext(grid_size=15, num_cars=2)
+    assert len(context.cars) == 2
+    
+    # 添加多个订单
+    order_ids = []
+    for i in range(3):
+        order_id = context.add_random_order()
+        assert order_id is not None
+        order_ids.append(order_id)
+    assert len(context.order_agent.orders) >= 3
+    
+    # 运行10步
+    completed_before = context.total_completed_orders
+    for i in range(10):
+        context.step()
+    completed_after = context.total_completed_orders
+    
+    assert context.current_step == 10, "应该执行了10步"
+    assert completed_after >= completed_before, "完成订单数不应该减少"
+    
+    # 检查车辆状态
+    for car in context.cars:
+        report = car.report()
+        assert 'state' in report
+        assert 'car_id' in report
+        assert report['car_id'] == car.car_id
 
-def main():
-    """主测试函数"""
-    print("=" * 60)
-    print("🧪 CampusFleet AI 系统测试")
-    print("=" * 60)
-    
-    tests = [
-        ("模块导入", test_imports),
-        ("环境模块", test_environment),
-        ("智能体模块", test_agents),
-        ("仿真系统", test_simulation),
-        ("完整工作流", test_full_workflow),
-    ]
-    
-    results = []
-    for test_name, test_func in tests:
-        result = test_func()
-        results.append((test_name, result))
-        time.sleep(0.5)
-    
-    # 打印测试结果
-    print("\n" + "=" * 60)
-    print("📊 测试结果汇总")
-    print("=" * 60)
-    
-    passed = 0
-    failed = 0
-    for test_name, result in results:
-        status = "✅ 通过" if result else "❌ 失败"
-        print(f"{test_name:15} : {status}")
-        if result:
-            passed += 1
-        else:
-            failed += 1
-    
-    print("=" * 60)
-    print(f"总计: {passed}个通过, {failed}个失败")
-    
-    if failed == 0:
-        print("\n🎉 所有测试通过！系统运行正常！")
-        print("\n💡 现在可以运行主程序：")
-        print("   python main.py --demo")
-        return 0
-    else:
-        print("\n⚠️ 部分测试失败，请检查错误信息")
-        return 1
+# 使用pytest的fixture来提供通用的测试数据
+@pytest.fixture
+def simulation_context():
+    """创建一个标准的仿真上下文用于测试"""
+    from core import SimulationContext
+    return SimulationContext(grid_size=15, num_cars=3)
+
+
+@pytest.fixture
+def grid_environment():
+    """创建一个标准的网格环境用于测试"""
+    from env import GridEnvironment
+    return GridEnvironment(size=15)
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # 当直接运行此文件时，使用pytest执行测试
+    import sys
+    pytest.main([__file__, "-v"])

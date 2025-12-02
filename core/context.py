@@ -4,19 +4,22 @@
 from typing import List, Dict, Optional, Tuple
 from agents import CarAgent, OrderAgent, SchedulerAgent, SchedulingStrategy
 from env import GridEnvironment, PathFinding
+from analytics import DataLogger
 
 
 class SimulationContext:
     """仿真上下文类 - 管理所有智能体和环境"""
     
     def __init__(self, grid_size: int = 15, num_cars: int = 3, 
-                 scheduling_strategy: SchedulingStrategy = SchedulingStrategy.GREEDY_NEAREST):
+                 scheduling_strategy: SchedulingStrategy = SchedulingStrategy.GREEDY_NEAREST,
+                 enable_data_logging: bool = True):
         """
         初始化仿真上下文
         Args:
             grid_size: 网格大小
             num_cars: 车辆数量
             scheduling_strategy: 调度策略
+            enable_data_logging: 是否启用数据记录
         """
         # 环境
         self.grid_env = GridEnvironment(size=grid_size)
@@ -35,6 +38,16 @@ class SimulationContext:
         # 统计信息
         self.total_completed_orders = 0
         self.total_distance_traveled = 0
+        
+        # 数据记录
+        self.enable_data_logging = enable_data_logging
+        self.data_logger = DataLogger() if enable_data_logging else None
+        if self.data_logger:
+            self.data_logger.set_metadata(
+                grid_size=grid_size,
+                num_cars=num_cars,
+                strategy=scheduling_strategy.value
+            )
         
         # 初始化车辆
         self._initialize_cars(num_cars)
@@ -56,6 +69,9 @@ class SimulationContext:
             num_cars = len(road_positions)
         
         selected_positions = random.sample(road_positions, num_cars)
+        
+        # 清空现有车辆列表（用于reset）
+        self.cars.clear()
         
         for i in range(num_cars):
             car = CarAgent(car_id=i, initial_position=selected_positions[i])
@@ -81,6 +97,17 @@ class SimulationContext:
         
         order_id = self.order_agent.create_order(pickup, delivery)
         print(f"✅ 订单 #{order_id} 已创建: {pickup} → {delivery}")
+        
+        # 记录订单创建事件
+        if self.data_logger:
+            self.data_logger.log_order_event(
+                step=self.current_step,
+                event_type='created',
+                order_id=order_id,
+                pickup=pickup,
+                delivery=delivery
+            )
+        
         return order_id
     
     def add_random_order(self) -> Optional[int]:
@@ -113,8 +140,10 @@ class SimulationContext:
         
         # 2. 调度智能体进行订单分配
         pending_orders = self.order_agent.get_pending_orders()
+        num_assignments = 0
         if pending_orders:
             assignments = self.scheduler.schedule(self.cars, pending_orders, self.grid_env)
+            num_assignments = len(assignments)
             
             # 执行分配
             for car_id, order_id, pickup, delivery in assignments:
@@ -122,9 +151,59 @@ class SimulationContext:
                 if car:
                     car.assign_task(order_id, pickup, delivery)
                     self.order_agent.assign_order(order_id, car_id)
+                    
+                    # 记录订单分配事件
+                    if self.data_logger:
+                        self.data_logger.log_order_event(
+                            step=self.current_step,
+                            event_type='assigned',
+                            order_id=order_id,
+                            pickup=pickup,
+                            delivery=delivery,
+                            car_id=car_id
+                        )
+            
+            # 记录调度事件
+            if self.data_logger and num_assignments > 0:
+                self.data_logger.log_scheduler_event(
+                    step=self.current_step,
+                    num_assignments=num_assignments
+                )
         
-        # 3. 车辆智能体更新（移动）
+        # 3. 车辆智能体更新（移动和充电）
         for car in self.cars:
+            # 处理充电状态
+            if car.state.name == 'CHARGING':
+                car.charge_step()
+                continue
+            
+            # 检查是否需要充电（严重低电时强制充电）
+            if car.is_critical_battery() and car.state.name not in ['MOVING_TO_CHARGE', 'CHARGING']:
+                nearest_station = self.grid_env.get_nearest_charging_station(car.position)
+                if nearest_station:
+                    # 如果正在执行任务，取消任务（低电优先）
+                    if car.current_order_id:
+                        self.order_agent.cancel_order(car.current_order_id)
+                    car.start_charging(nearest_station)
+            
+            # 处理前往充电站的移动
+            if car.state.name == 'MOVING_TO_CHARGE':
+                other_positions = set()
+                for other_car in self.cars:
+                    if other_car.car_id != car.car_id:
+                        other_positions.add(other_car.position)
+                
+                # 移动到充电站
+                if car.position == car.charging_station:
+                    car._handle_arrival()
+                else:
+                    if not car.current_path:
+                        car.plan_path(car.charging_station, self.pathfinder, other_positions)
+                    car.step(self.pathfinder, other_positions)
+                
+                self.grid_env.update_vehicle_position(car.car_id, car.position)
+                continue
+            
             if not car.is_idle():
                 # 获取其他车辆的位置（用于避障）
                 other_positions = set()
@@ -140,11 +219,29 @@ class SimulationContext:
                 
                 # 如果订单完成，更新订单状态
                 if order_completed and car.current_order_id:
-                    self.order_agent.complete_order(car.current_order_id)
+                    completed_order_id = car.current_order_id
+                    self.order_agent.complete_order(completed_order_id)
                     self.total_completed_orders += 1
+                    
+                    # 记录订单完成事件
+                    if self.data_logger:
+                        self.data_logger.log_order_event(
+                            step=self.current_step,
+                            event_type='completed',
+                            order_id=completed_order_id
+                        )
         
         # 4. 调度器更新
         self.scheduler.step()
+        
+        # 5. 记录帧数据
+        if self.data_logger:
+            self.data_logger.log_frame(
+                step=self.current_step,
+                cars=self.cars,
+                orders=self.order_agent,
+                scheduler=self.scheduler
+            )
         
         return True
     
@@ -168,19 +265,30 @@ class SimulationContext:
             状态摘要字符串
         """
         lines = []
-        lines.append(f"🕐 步数: {self.current_step} / {self.max_steps}")
-        lines.append(f"📊 调度策略: {self.scheduler.get_strategy_name()}")
-        lines.append(f"✅ 已完成订单: {self.total_completed_orders}")
+        lines.append(f"🕐 Step: {self.current_step} / {self.max_steps}")
+        lines.append(f"📊 Strategy: {self.scheduler.get_strategy_name()}")
+        lines.append(f"✅ Completed: {self.total_completed_orders}")
+        lines.append(f"🔋 Stations: {len(self.grid_env.charging_stations)}")
         
         # 车辆状态
-        lines.append("\n🚗 车辆状态:")
+        lines.append("\n🚗 Vehicles:")
         for car in self.cars:
             state = car.state.value
             pos = car.position
-            status = f"  车辆{car.car_id} @ {pos} - {state}"
+            battery_pct = car.get_battery_percentage()
+            
+            # 电量颜色编码
+            if battery_pct > 50:
+                battery_icon = "🟢"  # 绿色
+            elif battery_pct > 20:
+                battery_icon = "🟡"  # 黄色
+            else:
+                battery_icon = "🔴"  # 红色
+            
+            status = f"  Car{car.car_id} @ {pos} - {state} {battery_icon}{battery_pct:.0f}%"
             if car.current_order_id:
-                status += f" [订单#{car.current_order_id}]"
-            status += f" (已完成:{car.completed_orders})"
+                status += f" [Order#{car.current_order_id}]"
+            status += f" (Done:{car.completed_orders})"
             lines.append(status)
         
         return "\n".join(lines)
@@ -203,6 +311,10 @@ class SimulationContext:
             car.reset()
         self.order_agent.reset()
         self.scheduler.reset()
+        
+        # 重置数据记录器
+        if self.data_logger:
+            self.data_logger.clear()
         
         # 重新初始化车辆位置
         self._initialize_cars(len(self.cars))
@@ -230,3 +342,22 @@ class SimulationContext:
             stats['avg_distance_per_order'] = 0
         
         return stats
+    
+    def export_data(self, filename_prefix: str = "simulation") -> List[str]:
+        """
+        导出仿真数据到CSV文件
+        Args:
+            filename_prefix: 文件名前缀
+        Returns:
+            导出的文件路径列表
+        """
+        if not self.data_logger:
+            print("⚠️ 数据记录未启用，无法导出数据")
+            return []
+        
+        exported_files = self.data_logger.export_to_csv(filename_prefix)
+        print(f"\n📁 数据已导出到以下文件:")
+        for file_path in exported_files:
+            print(f"  - {file_path}")
+        
+        return exported_files

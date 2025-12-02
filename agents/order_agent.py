@@ -203,6 +203,8 @@ class OrderAgent:
         return {
             'total_orders': len(self.orders),
             'pending_orders': len(self.pending_orders),
+            'assigned_orders': status_counts['assigned'],
+            'completed_orders': status_counts['completed'],
             'status_counts': status_counts
         }
     

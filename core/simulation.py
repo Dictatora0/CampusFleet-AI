@@ -222,6 +222,9 @@ class Simulation:
                   f"行驶{car_info['total_distance']}格")
         
         print("=" * 60)
+        
+        # 导出数据和生成可视化
+        self._export_and_visualize()
     
     def set_fps(self, fps: int):
         """
@@ -231,6 +234,54 @@ class Simulation:
         """
         self.fps = fps
         self.frame_delay = 1.0 / fps if fps > 0 else 0.5
+    
+    def _export_and_visualize(self):
+        """导出数据并生成可视化图表"""
+        if not self.context.enable_data_logging:
+            return
+        
+        print("\n" + "=" * 60)
+        print("📊 正在导出数据和生成图表...")
+        print("=" * 60)
+        
+        # 导出CSV数据
+        exported_files = self.context.export_data()
+        
+        if not exported_files:
+            return
+        
+        # 生成可视化图表
+        try:
+            from analytics import DataVisualizer
+            
+            # 找到CSV文件
+            frames_csv = None
+            cars_csv = None
+            orders_csv = None
+            
+            for file_path in exported_files:
+                if 'frames' in file_path and file_path.endswith('.csv'):
+                    frames_csv = file_path
+                elif 'cars' in file_path and file_path.endswith('.csv'):
+                    cars_csv = file_path
+                elif 'orders' in file_path and file_path.endswith('.csv'):
+                    orders_csv = file_path
+            
+            if frames_csv and cars_csv:
+                visualizer = DataVisualizer()
+                grid_size = self.context.grid_env.size
+                visualizer.generate_all_plots(frames_csv, cars_csv, orders_csv, grid_size)
+                print("\n✅ 所有图表已生成！")
+            else:
+                print("⚠️ 未找到必要的CSV文件，跳过可视化")
+                
+        except ImportError as e:
+            print(f"⚠️ 缺少依赖库，跳过可视化: {e}")
+            print("提示: 请安装 matplotlib 和 pandas: pip install matplotlib pandas")
+        except Exception as e:
+            print(f"⚠️ 生成图表时出错: {e}")
+        
+        print("=" * 60)
 
 
 def run_simulation(grid_size: int = 15, num_cars: int = 3, mode: str = "interactive"):
