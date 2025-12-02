@@ -1,0 +1,34 @@
+{
+  "name": "campusfleet-ai-frontend",
+  "version": "3.0.0",
+  "description": "CampusFleet AI - 现代化Web前端",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.3.0",
+    "vue-router": "^4.2.0",
+    "vuex": "^4.0.0",
+    "axios": "^1.4.0",
+    "element-plus": "^2.3.0",
+    "@element-plus/icons-vue": "^2.1.0",
+    "echarts": "^5.4.0",
+    "vue-echarts": "^6.6.0",
+    "lodash": "^4.17.0",
+    "dayjs": "^1.11.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.0",
+    "vite": "^4.4.0",
+    "sass": "^1.63.0",
+    "typescript": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

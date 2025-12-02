@@ -11,6 +11,8 @@ class SchedulingStrategy(Enum):
     GREEDY_NEAREST = "Greedy Nearest"
     BALANCED_LOAD = "Balanced Load"
     HUNGARIAN = "Hungarian"
+    VRP_BATCHING = "VRP Batching"  # VRP拼单策略
+    MAPF_CBS = "MAPF CBS"  # 新增：CBS协调规划
 
 
 class SchedulerAgent:
@@ -50,15 +52,21 @@ class SchedulerAgent:
         if not idle_cars:
             return []
         
-        # 根据策略执行调度
+        # 根据策略选择调度方法
         if self.strategy == SchedulingStrategy.GREEDY_NEAREST:
-            return self._greedy_nearest_schedule(idle_cars, orders, grid_env)
+            assignments = self._greedy_nearest_schedule(idle_cars, orders, grid_env)
         elif self.strategy == SchedulingStrategy.BALANCED_LOAD:
-            return self._balanced_load_schedule(idle_cars, orders, grid_env)
+            assignments = self._balanced_load_schedule(idle_cars, orders, grid_env)
         elif self.strategy == SchedulingStrategy.HUNGARIAN:
-            return self._hungarian_schedule(idle_cars, orders, grid_env)
+            assignments = self._hungarian_schedule(idle_cars, orders, grid_env)
+        elif self.strategy == SchedulingStrategy.VRP_BATCHING:
+            assignments = self._vrp_batching_schedule(idle_cars, orders, grid_env)
+        elif self.strategy == SchedulingStrategy.MAPF_CBS:
+            assignments = self._mapf_cbs_schedule(idle_cars, orders, grid_env)
         else:
-            return self._greedy_nearest_schedule(idle_cars, orders, grid_env)
+            assignments = self._greedy_nearest_schedule(idle_cars, orders, grid_env)
+        
+        return assignments
     
     def _greedy_nearest_schedule(self, cars: List, orders: List, grid_env) -> List[Tuple]:
         """
@@ -244,6 +252,185 @@ class SchedulerAgent:
             strategy: 新的调度策略
         """
         self.strategy = strategy
+    
+    def _vrp_batching_schedule(self, cars: List, orders: List, grid_env) -> List[Tuple]:
+        """
+        VRP拼单策略：使用车辆路径问题算法，允许车辆一次处理多个订单
+        Args:
+            cars: 空闲车辆列表
+            orders: 待分配订单列表
+            grid_env: 网格环境
+        Returns:
+            分配结果列表，格式扩展为 [(car_id, [order_ids], route_tasks)]
+        """
+        try:
+            import sys
+            import os
+            sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+            from algorithms.vrp_solver import VRPSolver
+        except ImportError as e:
+            print(f"⚠️  VRP模块未找到: {e}，回退到贪心策略")
+            return self._greedy_nearest_schedule(cars, orders, grid_env)
+        
+        if not cars or not orders:
+            return []
+        
+        # 创建VRP求解器
+        vrp_solver = VRPSolver(vehicle_capacity=3)  # 每辆车最多同时处理3个订单
+        
+        # 距离函数
+        def distance_func(pos1, pos2):
+            return grid_env.calculate_distance(pos1, pos2)
+        
+        # 求解VRP
+        routes = vrp_solver.solve(cars, orders, distance_func)
+        
+        # 转换为传统格式的分配结果
+        assignments = []
+        
+        for vehicle_id, route in routes.items():
+            if not route.tasks:
+                continue
+                
+            # 将路线任务分组为订单
+            order_groups = {}
+            for task in route.tasks:
+                if task.order_id not in order_groups:
+                    order_groups[task.order_id] = {'pickup': None, 'delivery': None}
+                
+                if task.task_type.value == 'pickup':
+                    order_groups[task.order_id]['pickup'] = task.location
+                else:
+                    order_groups[task.order_id]['delivery'] = task.location
+            
+            # 为每个完整的订单创建分配记录
+            for order_id, locations in order_groups.items():
+                if locations['pickup'] and locations['delivery']:
+                    assignments.append((
+                        vehicle_id,
+                        order_id,
+                        locations['pickup'],
+                        locations['delivery']
+                    ))
+                    self.total_assignments += 1
+        
+        # 记录VRP分配历史
+        if assignments:
+            self.assignment_history.append({
+                'assignments': assignments,
+                'strategy': self.strategy.value,
+                'vrp_routes': len(routes),
+                'total_orders': len(orders),
+                'total_vehicles': len(cars)
+            })
+        
+        return assignments
+    
+    def _mapf_cbs_schedule(self, cars: List, orders: List, grid_env) -> List[Tuple]:
+        """
+        MAPF CBS策略：使用冲突感知搜索进行全局协调规划
+        Args:
+            cars: 空闲车辆列表
+            orders: 待分配订单列表
+            grid_env: 网格环境
+        Returns:
+            分配结果列表
+        """
+        try:
+            import sys
+            import os
+            sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+            from algorithms.mapf_planner import MAPFPlanner
+        except ImportError as e:
+            print(f"⚠️  MAPF模块未找到: {e}，回退到贪心策略")
+            return self._greedy_nearest_schedule(cars, orders, grid_env)
+        
+        if not cars or not orders:
+            return []
+        
+        # 只处理数量匹配的情况（1车1单）
+        assignments = []
+        available_cars = cars.copy()
+        
+        # 批处理：每次最多处理N个车辆和订单
+        batch_size = min(len(available_cars), len(orders), 5)  # 限制批处理大小
+        
+        processed_orders = 0
+        while available_cars and processed_orders < len(orders):
+            # 选择当前批次的车辆和订单
+            current_cars = available_cars[:batch_size]
+            current_orders = orders[processed_orders:processed_orders + len(current_cars)]
+            
+            if not current_orders:
+                break
+            
+            # 创建MAPF规划器
+            mapf_planner = MAPFPlanner(grid_env, algorithm="CBS")
+            
+            # 构建目标字典 {car_id: pickup_location}
+            goals = {}
+            car_order_mapping = {}
+            
+            for i, (car, order) in enumerate(zip(current_cars, current_orders)):
+                goals[car.car_id] = order.pickup_point
+                car_order_mapping[car.car_id] = order
+            
+            print(f"🧠 CBS规划: {len(current_cars)}车 -> {len(current_orders)}单")
+            
+            # 执行MAPF规划
+            coordinated_paths = mapf_planner.plan_multi_agent_paths(current_cars, goals)
+            
+            if coordinated_paths:
+                # 成功规划，创建分配
+                for car_id, path in coordinated_paths.items():
+                    if car_id in car_order_mapping:
+                        order = car_order_mapping[car_id]
+                        
+                        # 找到对应的车辆
+                        car = next(c for c in current_cars if c.car_id == car_id)
+                        
+                        # 将CBS路径设置到车辆（扩展功能）
+                        if hasattr(car, 'set_coordinated_path'):
+                            car.set_coordinated_path(path)
+                        
+                        assignments.append((
+                            car_id,
+                            order.order_id,
+                            order.pickup_point,
+                            order.delivery_point
+                        ))
+                        self.total_assignments += 1
+                
+                # 移除已分配的车辆
+                available_cars = [c for c in available_cars if c.car_id not in coordinated_paths]
+                processed_orders += len(current_orders)
+                
+                print(f"✅ CBS成功分配 {len(coordinated_paths)} 对")
+                
+            else:
+                # CBS规划失败，回退到贪心策略
+                print("❌ CBS规划失败，回退到贪心策略")
+                
+                # 为当前批次使用贪心分配
+                greedy_assignments = self._greedy_nearest_schedule(current_cars, current_orders, grid_env)
+                assignments.extend(greedy_assignments)
+                
+                # 移除已分配的车辆
+                assigned_car_ids = {a[0] for a in greedy_assignments}
+                available_cars = [c for c in available_cars if c.car_id not in assigned_car_ids]
+                processed_orders += len(greedy_assignments)
+        
+        # 记录MAPF分配历史
+        if assignments:
+            self.assignment_history.append({
+                'assignments': assignments,
+                'strategy': self.strategy.value,
+                'mapf_success': True,
+                'total_orders': len(orders),
+                'total_vehicles': len(cars)
+            })
+        
+        return assignments
 
 
 def call_llm_for_scheduling(context: dict) -> str:

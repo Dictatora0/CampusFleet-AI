@@ -1,7 +1,7 @@
 """
 车辆智能体模块 - 负责路径规划、移动和避障
 """
-from typing import Tuple, Optional, List, Set
+from typing import Tuple, Optional, List, Set, Dict
 from enum import Enum
 
 
@@ -43,10 +43,20 @@ class CarAgent:
         self.charging_rate = 5.0  # 每步充电量
         self.charging_station: Optional[Tuple[int, int]] = None  # 目标充电站
         
-        # 任务相关
-        self.current_order_id: Optional[int] = None
+        # 任务相关 - 支持多订单
+        self.current_order_id: Optional[str] = None
         self.pickup_point: Optional[Tuple[int, int]] = None
         self.delivery_point: Optional[Tuple[int, int]] = None
+        
+        # VRP多订单支持
+        self.task_queue: List[Dict] = []  # 任务队列 [{'type': 'pickup'/'delivery', 'order_id': str, 'location': tuple}]
+        self.current_capacity = 0  # 当前载货量
+        self.max_capacity = 3  # 最大载货量
+        
+        # MAPF协调路径支持
+        self.coordinated_path: Optional[List[Tuple[int, int]]] = None  # CBS规划的协调路径
+        self.path_time_step = 0  # 当前路径执行步数
+        self.use_coordinated_path = False  # 是否使用协调路径
         
         # 路径相关
         self.current_path: List[Tuple[int, int]] = []
@@ -84,21 +94,137 @@ class CarAgent:
         self.deadlock_recovery_mode = False
         self.battery = self.max_battery
         self.charging_station = None
+        
+        # 重置VRP相关状态
+        self.task_queue.clear()
+        self.current_capacity = 0
+        
+        # 重置MAPF协调状态
+        self.clear_coordinated_path()
     
-    def assign_task(self, order_id: int, pickup: Tuple[int, int], delivery: Tuple[int, int]):
+    def assign_task(self, order_id: str, pickup: Tuple[int, int], delivery: Tuple[int, int]):
         """
-        分配配送任务
+        分配新任务（兼容原有接口）
         Args:
             order_id: 订单ID
-            pickup: 取货点坐标
-            delivery: 配送点坐标
+            pickup: 取货点
+            delivery: 配送点
         """
+        if self.state != CarState.IDLE:
+            return False
+        
         self.current_order_id = order_id
         self.pickup_point = pickup
         self.delivery_point = delivery
         self.state = CarState.MOVING_TO_PICKUP
+        
+        # 清空之前的路径
         self.current_path = []
         self.path_index = 0
+        
+        return True
+    
+    def assign_vrp_route(self, task_queue: List[Dict]):
+        """
+        分配VRP路线（多订单任务队列）
+        Args:
+            task_queue: 任务队列，格式: [{'type': 'pickup'/'delivery', 'order_id': str, 'location': tuple}]
+        """
+        if self.state != CarState.IDLE or self.current_capacity != 0:
+            return False
+        
+        self.task_queue = task_queue.copy()
+        
+        if self.task_queue:
+            # 开始执行第一个任务
+            self._process_next_task()
+        
+        return True
+    
+    def _process_next_task(self):
+        """处理队列中的下一个任务"""
+        if not self.task_queue:
+            # 所有任务完成，回到空闲状态
+            self.state = CarState.IDLE
+            self.current_order_id = None
+            self.pickup_point = None
+            self.delivery_point = None
+            return
+        
+        # 获取下一个任务
+        next_task = self.task_queue[0]
+        
+        self.current_order_id = next_task['order_id']
+        
+        if next_task['type'] == 'pickup':
+            self.pickup_point = next_task['location']
+            self.state = CarState.MOVING_TO_PICKUP
+        else:  # delivery
+            self.delivery_point = next_task['location']
+            self.state = CarState.MOVING_TO_DELIVERY
+        
+        # 清空路径，重新规划
+        self.current_path = []
+        self.path_index = 0
+    
+    def set_coordinated_path(self, path: List[Tuple[int, int]]):
+        """
+        设置CBS协调路径
+        Args:
+            path: CBS规划的无冲突路径
+        """
+        self.coordinated_path = path.copy()
+        self.path_time_step = 0
+        self.use_coordinated_path = True
+        print(f"🧠 车辆{self.car_id}设置协调路径，长度{len(path)}")
+    
+    def clear_coordinated_path(self):
+        """清除协调路径，回到传统规划"""
+        self.coordinated_path = None
+        self.path_time_step = 0
+        self.use_coordinated_path = False
+    
+    def _execute_coordinated_step(self) -> bool:
+        """
+        执行协调路径的一步
+        Returns:
+            是否完成移动或到达目标
+        """
+        if not self.coordinated_path or self.path_time_step >= len(self.coordinated_path):
+            # 协调路径执行完毕，切换回传统模式
+            self.clear_coordinated_path()
+            return False
+        
+        # 获取当前应该到达的位置
+        target_position = self.coordinated_path[self.path_time_step]
+        
+        # 移动到目标位置
+        if self.position != target_position:
+            # 消耗电量
+            self.consume_battery()
+            
+            # 更新位置
+            self.position = target_position
+            self.total_distance += 1
+            
+        # 增加时间步
+        self.path_time_step += 1
+        
+        # 检查是否到达任务目标
+        target = None
+        if self.state == CarState.MOVING_TO_PICKUP:
+            target = self.pickup_point
+        elif self.state == CarState.MOVING_TO_DELIVERY:
+            target = self.delivery_point
+        elif self.state == CarState.MOVING_TO_CHARGE:
+            target = self.charging_station
+        
+        if target and self.position == target:
+            # 到达目标，处理任务完成
+            self.clear_coordinated_path()  # 清除协调路径
+            return self._handle_arrival()
+        
+        return True
     
     def plan_path(self, target: Tuple[int, int], pathfinder, blocked_positions: Optional[Set] = None):
         """
@@ -117,7 +243,7 @@ class CarAgent:
     
     def step(self, pathfinder, other_car_positions: Set[Tuple[int, int]]) -> bool:
         """
-        执行一步移动（增强版：包含智能避让、死锁检测和交通规则）
+        执行一步移动（增强版：包含MAPF协调、智能避让、死锁检测）
         Args:
             pathfinder: 路径规划器
             other_car_positions: 其他车辆的位置集合
@@ -126,6 +252,10 @@ class CarAgent:
         """
         if self.state == CarState.IDLE:
             return False
+        
+        # 优先使用协调路径（MAPF CBS）
+        if self.use_coordinated_path and self.coordinated_path:
+            return self._execute_coordinated_step()
         
         # 检测是否被卡住（位置没有变化）
         if self.position == self.last_position:
@@ -214,17 +344,34 @@ class CarAgent:
             是否完成了订单
         """
         if self.state == CarState.MOVING_TO_PICKUP:
-            # 到达取货点，开始配送
-            self.state = CarState.MOVING_TO_DELIVERY
-            self.current_path = []
-            self.path_index = 0
+            # 到达取货点
+            self.current_capacity += 1  # 增加载货量
+            
+            # 如果使用任务队列，移除完成的任务并处理下一个
+            if self.task_queue:
+                self.task_queue.pop(0)  # 移除当前取货任务
+                self._process_next_task()
+            else:
+                # 传统模式：开始配送
+                self.state = CarState.MOVING_TO_DELIVERY
+                self.current_path = []
+                self.path_index = 0
             return False
         
         elif self.state == CarState.MOVING_TO_DELIVERY:
-            # 到达配送点，完成订单
+            # 到达配送点
+            self.current_capacity -= 1  # 减少载货量
             self.completed_orders += 1
-            self.reset()
-            return True
+            
+            # 如果使用任务队列，移除完成的任务并处理下一个
+            if self.task_queue:
+                self.task_queue.pop(0)  # 移除当前送货任务
+                self._process_next_task()
+                return self.current_capacity == 0 and not self.task_queue  # 所有任务完成时返回True
+            else:
+                # 传统模式：重置车辆状态
+                self.reset()
+                return True
         
         elif self.state == CarState.MOVING_TO_CHARGE:
             # 到达充电站，开始充电
@@ -376,6 +523,10 @@ class CarAgent:
             return True
         
         return False
+    
+    def consume_battery(self):
+        """消耗电量（移动时调用）"""
+        self.battery = max(0, self.battery - self.battery_consumption_rate)
     
     def get_battery_percentage(self) -> float:
         """
