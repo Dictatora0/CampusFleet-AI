@@ -2,9 +2,10 @@
 Pytest 配置文件 - 提供全局的 fixtures 和配置
 """
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # 将项目根目录添加到 Python 路径
 project_root = Path(__file__).parent.parent
@@ -21,11 +22,11 @@ def project_root_path():
 def sample_grid_5x5():
     """创建一个5x5的测试网格"""
     return [
-        ['.', '.', '.', '.', '.'],
-        ['.', '#', '#', '#', '.'],
-        ['.', '.', '.', '#', '.'],
-        ['.', '#', '.', '.', '.'],
-        ['.', '.', '.', '.', '.']
+        [".", ".", ".", ".", "."],
+        [".", "#", "#", "#", "."],
+        [".", ".", ".", "#", "."],
+        [".", "#", ".", ".", "."],
+        [".", ".", ".", ".", "."],
     ]
 
 
@@ -38,8 +39,8 @@ def sample_grid_10x10():
         for j in range(10):
             # 创建一些随机障碍物
             if (i, j) in [(2, 2), (2, 3), (3, 2), (7, 7)]:
-                row.append('#')
+                row.append("#")
             else:
-                row.append('.')
+                row.append(".")
         grid.append(row)
     return grid

@@ -1,0 +1,57 @@
+{
+  "simulation": {
+    "grid_size": 15,
+    "num_cars": 3,
+    "max_steps": 1000,
+    "fps": 2,
+    "enable_logging": true,
+    "log_level": "INFO"
+  },
+  "car": {
+    "max_battery": 100,
+    "battery_consumption_rate": 1.0,
+    "charging_rate": 5.0,
+    "low_battery_threshold": 20,
+    "critical_battery_threshold": 10,
+    "max_capacity": 3
+  },
+  "rl": {
+    "dqn_learning_rate": 0.001,
+    "dqn_gamma": 0.95,
+    "dqn_epsilon_start": 0.9,
+    "dqn_epsilon_end": 0.01,
+    "dqn_epsilon_decay": 10000,
+    "dqn_memory_size": 50000,
+    "dqn_batch_size": 64,
+    "ppo_learning_rate": 0.0003,
+    "ppo_gamma": 0.99,
+    "ppo_gae_lambda": 0.95,
+    "ppo_clip_ratio": 0.2,
+    "ppo_entropy_coef": 0.01,
+    "ppo_value_coef": 0.5,
+    "ppo_update_epochs": 10,
+    "max_episodes": 1000,
+    "eval_interval": 50,
+    "save_interval": 100,
+    "early_stop_threshold": 0.9,
+    "patience": 200,
+    "env_max_steps": 200,
+    "env_max_orders_per_episode": 15
+  },
+  "web": {
+    "host": "0.0.0.0",
+    "port": 8001,
+    "reload": false,
+    "workers": 1,
+    "cors_origins": ["*"]
+  },
+  "visualization": {
+    "cell_size": 40,
+    "fps": 10
+  },
+  "demo": {
+    "small_grid_size": 8,
+    "small_num_cars": 2,
+    "test_num_orders": 10
+  }
+}

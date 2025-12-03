@@ -6,7 +6,7 @@ CampusFleet AI - 强化学习模块
 
 核心组件：
 - RLEnvironment: 强化学习环境封装
-- DQNAgent: 深度Q网络智能体  
+- DQNAgent: 深度Q网络智能体
 - PPOAgent: 近端策略优化智能体
 - RLScheduler: RL调度策略集成
 - TrainingManager: 训练和评估管理
@@ -17,24 +17,24 @@ CampusFleet AI - 强化学习模块
 - 奖励函数：效率、距离、完成时间的综合优化
 """
 
-from .rl_environment import RLEnvironment, StateEncoder, RewardCalculator
 from .dqn_agent import DQNAgent, DQNNetwork
-from .ppo_agent import PPOAgent, ActorCriticNetwork
+from .ppo_agent import ActorCriticNetwork, PPOAgent
+from .rl_environment import RewardCalculator, RLEnvironment, StateEncoder
 from .rl_scheduler import RLScheduler
-from .training_manager import TrainingManager, EvaluationMetrics
+from .training_manager import EvaluationMetrics, TrainingManager
 
 __version__ = "1.0.0"
 __author__ = "CampusFleet AI Team"
 
 __all__ = [
     "RLEnvironment",
-    "StateEncoder", 
+    "StateEncoder",
     "RewardCalculator",
     "DQNAgent",
     "DQNNetwork",
-    "PPOAgent", 
+    "PPOAgent",
     "ActorCriticNetwork",
     "RLScheduler",
     "TrainingManager",
-    "EvaluationMetrics"
+    "EvaluationMetrics",
 ]

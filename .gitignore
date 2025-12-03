@@ -36,6 +36,8 @@ env/
 
 # Logs
 *.log
+logs/
+*.log.*
 
 # Testing
 .pytest_cache/
@@ -46,3 +48,14 @@ htmlcov/
 simulation_logs/
 output/
 *.csv
+rl_models/
+demo_rl_models/
+*.pth
+*.pt
+*.ckpt
+
+# Config files (keep examples)
+config.json
+config.*.json
+!config.example.json
+!config.default.json
