@@ -4,6 +4,7 @@
 from typing import List, Dict, Tuple, Optional
 from enum import Enum
 import sys
+import os
 
 
 class SchedulingStrategy(Enum):
@@ -12,21 +13,33 @@ class SchedulingStrategy(Enum):
     BALANCED_LOAD = "Balanced Load"
     HUNGARIAN = "Hungarian"
     VRP_BATCHING = "VRP Batching"  # VRP拼单策略
-    MAPF_CBS = "MAPF CBS"  # 新增：CBS协调规划
+    MAPF_CBS = "MAPF CBS"  # CBS协调规划
+    DQN_LEARNING = "DQN Learning"  # 新增：DQN强化学习（训练模式）
+    DQN_INFERENCE = "DQN Inference"  # 新增：DQN强化学习（推理模式）
+    PPO_LEARNING = "PPO Learning"  # 新增：PPO强化学习（训练模式）
+    PPO_INFERENCE = "PPO Inference"  # 新增：PPO强化学习（推理模式）
 
 
 class SchedulerAgent:
     """调度智能体类 - 负责将订单分配给车辆"""
     
-    def __init__(self, strategy: SchedulingStrategy = SchedulingStrategy.GREEDY_NEAREST):
+    def __init__(self, strategy: SchedulingStrategy = SchedulingStrategy.GREEDY_NEAREST,
+                 grid_size: int = 15, max_cars: int = 10, max_orders: int = 20):
         """
         初始化调度智能体
         Args:
             strategy: 调度策略
+            grid_size: 网格大小（用于RL）
+            max_cars: 最大车辆数（用于RL）
+            max_orders: 最大订单数（用于RL）
         """
         self.strategy = strategy
         self.assignment_history: List[Dict] = []
         self.total_assignments = 0
+        
+        # RL调度器初始化
+        self.rl_schedulers = {}
+        self._init_rl_schedulers(grid_size, max_cars, max_orders)
     
     def reset(self):
         """重置调度器"""
@@ -63,6 +76,9 @@ class SchedulerAgent:
             assignments = self._vrp_batching_schedule(idle_cars, orders, grid_env)
         elif self.strategy == SchedulingStrategy.MAPF_CBS:
             assignments = self._mapf_cbs_schedule(idle_cars, orders, grid_env)
+        elif self.strategy in [SchedulingStrategy.DQN_LEARNING, SchedulingStrategy.DQN_INFERENCE,
+                              SchedulingStrategy.PPO_LEARNING, SchedulingStrategy.PPO_INFERENCE]:
+            assignments = self._rl_schedule(idle_cars, orders, grid_env)
         else:
             assignments = self._greedy_nearest_schedule(idle_cars, orders, grid_env)
         
@@ -431,6 +447,156 @@ class SchedulerAgent:
             })
         
         return assignments
+    
+    def _init_rl_schedulers(self, grid_size: int, max_cars: int, max_orders: int):
+        """初始化RL调度器"""
+        try:
+            # 导入RL模块
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+            from rl_agents.rl_scheduler import RLScheduler
+            
+            # 创建各种RL调度器
+            model_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rl_models")
+            
+            # DQN调度器
+            self.rl_schedulers["DQN_LEARNING"] = RLScheduler(
+                agent_type="DQN",
+                grid_size=grid_size,
+                max_cars=max_cars,
+                max_orders=max_orders,
+                training_mode=True
+            )
+            
+            self.rl_schedulers["DQN_INFERENCE"] = RLScheduler(
+                agent_type="DQN",
+                grid_size=grid_size,
+                max_cars=max_cars,
+                max_orders=max_orders,
+                model_path=os.path.join(model_dir, "best_dqn_model.pth"),
+                training_mode=False
+            )
+            
+            # PPO调度器
+            self.rl_schedulers["PPO_LEARNING"] = RLScheduler(
+                agent_type="PPO",
+                grid_size=grid_size,
+                max_cars=max_cars,
+                max_orders=max_orders,
+                training_mode=True
+            )
+            
+            self.rl_schedulers["PPO_INFERENCE"] = RLScheduler(
+                agent_type="PPO",
+                grid_size=grid_size,
+                max_cars=max_cars,
+                max_orders=max_orders,
+                model_path=os.path.join(model_dir, "best_ppo_model.pth"),
+                training_mode=False
+            )
+            
+            print(f"🤖 RL调度器初始化完成 - {len(self.rl_schedulers)}个策略")
+            
+        except ImportError as e:
+            print(f"⚠️ RL模块导入失败: {e}")
+            print("   将使用传统调度策略作为回退")
+        except Exception as e:
+            print(f"⚠️ RL调度器初始化失败: {e}")
+    
+    def _rl_schedule(self, cars: List, orders: List, grid_env) -> List[Tuple]:
+        """
+        使用强化学习进行调度
+        
+        Args:
+            cars: 空闲车辆列表
+            orders: 待分配订单列表
+            grid_env: 网格环境对象
+            
+        Returns:
+            分配结果列表
+        """
+        strategy_key = self.strategy.value.replace(" ", "_").upper()
+        
+        # 检查是否有对应的RL调度器
+        if strategy_key not in self.rl_schedulers:
+            print(f"⚠️ 没有找到RL调度器: {strategy_key}, 回退到贪心策略")
+            return self._greedy_nearest_schedule(cars, orders, grid_env)
+        
+        try:
+            rl_scheduler = self.rl_schedulers[strategy_key]
+            
+            # 使用RL调度器进行决策
+            rl_assignments = rl_scheduler.schedule(cars, orders, grid_env)
+            
+            # 转换RL分配格式 (car_id, order_id) -> (car_id, order_id, pickup, delivery)
+            assignments = []
+            for car_id, order_id in rl_assignments:
+                # 找到对应的车辆和订单
+                car = next((c for c in cars if c.car_id == car_id), None)
+                order = next((o for o in orders if o.order_id == order_id), None)
+                
+                if car and order:
+                    assignments.append((car_id, order_id, order.pickup_point, order.delivery_point))
+            
+            # 记录RL分配历史
+            if assignments:
+                self.assignment_history.append({
+                    'assignments': assignments,
+                    'strategy': self.strategy.value,
+                    'rl_success': True,
+                    'rl_stats': rl_scheduler.get_stats(),
+                    'total_orders': len(orders),
+                    'total_vehicles': len(cars)
+                })
+                
+                print(f"🤖 RL调度成功: {len(assignments)}个分配 ({strategy_key})")
+            
+            return assignments
+            
+        except Exception as e:
+            print(f"❌ RL调度失败: {e}")
+            print(f"   回退到贪心策略")
+            
+            # 记录失败信息
+            self.assignment_history.append({
+                'assignments': [],
+                'strategy': self.strategy.value,
+                'rl_success': False,
+                'error': str(e),
+                'total_orders': len(orders),
+                'total_vehicles': len(cars)
+            })
+            
+            # 回退到贪心策略
+            return self._greedy_nearest_schedule(cars, orders, grid_env)
+    
+    def get_rl_stats(self) -> Dict:
+        """获取RL调度统计信息"""
+        stats = {}
+        for strategy, scheduler in self.rl_schedulers.items():
+            try:
+                stats[strategy] = scheduler.get_stats()
+            except Exception as e:
+                stats[strategy] = {'error': str(e)}
+        return stats
+    
+    def save_rl_models(self, save_dir: str = "rl_models"):
+        """保存RL模型"""
+        os.makedirs(save_dir, exist_ok=True)
+        
+        for strategy, scheduler in self.rl_schedulers.items():
+            try:
+                model_path = os.path.join(save_dir, f"{strategy.lower()}_model.pth")
+                scheduler.save_model(model_path)
+            except Exception as e:
+                print(f"⚠️ 保存{strategy}模型失败: {e}")
+    
+    def set_rl_training_mode(self, training: bool):
+        """设置RL调度器训练模式"""
+        for scheduler in self.rl_schedulers.values():
+            try:
+                scheduler.set_training_mode(training)
+            except Exception as e:
+                print(f"⚠️ 设置RL训练模式失败: {e}")
 
 
 def call_llm_for_scheduling(context: dict) -> str:
