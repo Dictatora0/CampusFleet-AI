@@ -1,0 +1,146 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore|perf)(\(.+\))?:\ .+ ]]; then
+            echo "❌ PR title must follow Conventional Commits format"
+            echo "Examples: feat: add new feature, fix: resolve bug"
+            exit 1
+          fi
+          echo "✅ PR title is valid"
+
+      - name: Check branch name
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|bugfix|hotfix|refactor|docs|test)/.+ ]]; then
+            echo "⚠️ Warning: Branch name should follow pattern: feature/*, bugfix/*, etc."
+          fi
+
+      - name: Check for merge conflicts
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if git merge-tree $(git merge-base HEAD origin/${{ github.base_ref }}) HEAD origin/${{ github.base_ref }} | grep -q '<<<<<<<'; then
+            echo "❌ Merge conflicts detected"
+            exit 1
+          fi
+          echo "✅ No merge conflicts"
+
+      - name: Check file changes
+        run: |
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          echo "Files changed: $FILES_CHANGED"
+          if [ $FILES_CHANGED -gt 50 ]; then
+            echo "⚠️ Warning: Large PR with $FILES_CHANGED files changed"
+            echo "Consider splitting into smaller PRs"
+          fi
+
+  quick-tests:
+    name: Quick Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run quick tests
+        run: |
+          pytest tests/ -v --tb=line -x
+
+      - name: Quick lint check
+        run: |
+          pip install flake8
+          flake8 core/ --max-line-length=100 --extend-ignore=E203,W503 --count
+
+  size-label:
+    name: PR Size Label
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate PR size
+        id: size
+        run: |
+          ADDITIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$1} END {print sum}')
+          DELETIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$2} END {print sum}')
+          TOTAL=$((ADDITIONS + DELETIONS))
+
+          echo "additions=$ADDITIONS" >> $GITHUB_OUTPUT
+          echo "deletions=$DELETIONS" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+          if [ $TOTAL -lt 100 ]; then
+            echo "size=XS" >> $GITHUB_OUTPUT
+          elif [ $TOTAL -lt 300 ]; then
+            echo "size=S" >> $GITHUB_OUTPUT
+          elif [ $TOTAL -lt 1000 ]; then
+            echo "size=M" >> $GITHUB_OUTPUT
+          elif [ $TOTAL -lt 3000 ]; then
+            echo "size=L" >> $GITHUB_OUTPUT
+          else
+            echo "size=XL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment PR size
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const size = '${{ steps.size.outputs.size }}';
+            const additions = '${{ steps.size.outputs.additions }}';
+            const deletions = '${{ steps.size.outputs.deletions }}';
+            const total = '${{ steps.size.outputs.total }}';
+
+            const sizeEmoji = {
+              'XS': '🟢',
+              'S': '🟢',
+              'M': '🟡',
+              'L': '🟠',
+              'XL': '🔴'
+            };
+
+            const body = `## PR Size: ${sizeEmoji[size]} ${size}
+
+            - Additions: +${additions}
+            - Deletions: -${deletions}
+            - Total changes: ${total}
+
+            ${size === 'XL' || size === 'L' ? '⚠️ Consider splitting this PR into smaller ones for easier review.' : '✅ Good PR size for review!'}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

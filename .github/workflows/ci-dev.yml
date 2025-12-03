@@ -1,0 +1,83 @@
+name: CI - Development
+
+on:
+  push:
+    branches: [develop, dev]
+  pull_request:
+    branches: [develop, dev]
+
+jobs:
+  test-dev:
+    name: Development Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --tb=short
+
+      - name: Generate coverage report
+        run: |
+          pytest tests/ --cov=core --cov-report=xml --cov-report=term
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: development
+          name: dev-coverage
+
+  code-quality-dev:
+    name: Code Quality (Dev)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort flake8
+
+      - name: Check code formatting
+        run: |
+          black --check core/ tests/ --line-length 100 || echo "::warning::Code needs formatting"
+
+      - name: Check import sorting
+        run: |
+          isort --check-only core/ tests/ --profile black || echo "::warning::Imports need sorting"
+
+      - name: Lint with flake8
+        run: |
+          flake8 core/ --max-line-length=100 --extend-ignore=E203,W503 --count --statistics || true

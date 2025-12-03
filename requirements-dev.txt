@@ -1,0 +1,26 @@
+# 开发工具依赖
+
+# 测试
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-benchmark>=4.0.0
+
+# 代码质量
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+pylint>=3.0.0
+mypy>=1.0.0
+
+# 文档
+sphinx>=7.0.0
+sphinx-rtd-theme>=2.0.0
+sphinx-autodoc-typehints>=1.24.0
+
+# Pre-commit
+pre-commit>=3.0.0
+
+# 性能分析
+py-spy>=0.3.14
+memory-profiler>=0.61.0
