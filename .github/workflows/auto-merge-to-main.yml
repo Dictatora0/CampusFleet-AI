@@ -1,0 +1,71 @@
+name: Auto Merge Develop to Main
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  test-and-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run linting checks
+        run: |
+          pip install flake8 black isort mypy
+          flake8 . --max-line-length=100 --extend-ignore=E203,W503 \
+            --exclude=venv,env,.venv,.git,__pycache__,docs,build,dist
+          black --check . --line-length=100 --exclude='/(venv|env|\.venv|\.git|__pycache__|docs|build|dist)/'
+          isort --check-only . --profile=black --skip venv --skip env --skip .venv
+
+      - name: Run type checking
+        run: |
+          mypy core agents algorithms analytics env rl_agents --config-file=pyproject.toml || true
+
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v --tb=short --maxfail=3
+
+      - name: Run integration tests
+        run: |
+          pytest tests_integration/ -v --tb=short --maxfail=2 || true
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: Merge develop to main
+        if: success()
+        run: |
+          git fetch origin main:main
+          git checkout main
+          git merge develop --no-ff -m "chore: auto-merge develop to main [skip ci]"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Tests failed on develop branch. Merge to main cancelled."
