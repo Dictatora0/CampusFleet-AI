@@ -257,7 +257,7 @@ class TrainingManager:
             "completion_rates": self.metrics.completion_rates,
             "avg_distances": self.metrics.avg_distances,
             "success_rates": self.metrics.success_rates,
-            "losses": self.agent.loss_history if hasattr(self.agent, "loss_history") else [],
+            "losses": self.agent.losses if hasattr(self.agent, "losses") else [],
             "final_stats": final_stats,
             "training_time": training_time,
             "best_performance": self.best_performance,
