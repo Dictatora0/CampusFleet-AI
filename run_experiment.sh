@@ -1,11 +1,16 @@
 #!/bin/bash
-# 多智能体系统功能展示自动化实验脚本
-# 执行前请确保已安装所有依赖
+# ============================================================================
+# 多智能体系统功能展示自动化实验脚本 v2.0
+# ============================================================================
+# 描述: 一键运行从环境准备到数据分析的完整实验流程
+# 作者: Cascade AI
+# 日期: 2025-12-04
+# 文档: 详见 EXPERIMENT_GUIDE.md
+# ============================================================================
 
 set -e  # 遇到错误立即退出
 
-PROJECT_DIR="/Users/lifulin/Desktop/CampusFleet AI"
-DATA_DIR="$PROJECT_DIR/assignment_data"
+VERSION="2.0"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -14,13 +19,140 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# 显示帮助信息
+show_help() {
+    cat << EOF
+${BLUE}========================================
+多智能体系统功能展示实验脚本 v${VERSION}
+========================================${NC}
+
+${GREEN}用法:${NC}
+  $0 [网格大小] [车辆数] [订单数] [调度策略]
+
+${GREEN}参数:${NC}
+  网格大小    地图尺寸 (NxN)，默认: 10，推荐范围: 5-30
+  车辆数      配送车辆数量，默认: 4，推荐范围: 2-10
+  订单数      随机订单数量，默认: 10，推荐范围: 5-30
+  调度策略    任务分配算法，默认: GREEDY_NEAREST
+
+${GREEN}调度策略选项:${NC}
+  GREEDY_NEAREST   - 贪心最近车辆（快速响应）
+  BALANCED         - 负载均衡（均衡利用）
+  HUNGARIAN        - 匈牙利算法（全局最优）
+  VRP_BATCHING     - VRP批量优化（多订单拼单）
+  MAPF_CBS         - MAPF路径规划（冲突避免）
+
+${GREEN}示例:${NC}
+  $0                              # 使用默认配置
+  $0 15 6 15 BALANCED            # 中等规模负载均衡测试
+  $0 20 8 20 HUNGARIAN           # 大规模全局最优测试
+
+${GREEN}输出:${NC}
+  - JSON数据: assignment_data/json_data/*.json
+  - CSV日志:  assignment_data/csv_exports/*.csv
+  - 可视化:   assignment_data/plots/*.png
+  - 摘要:     assignment_data/experiment_summary.txt
+
+${GREEN}服务:${NC}
+  - 后端API:  http://localhost:8001/api/docs
+  - 前端界面: http://localhost:3000/multi-agent
+
+${GREEN}停止服务:${NC}
+  ./stop_experiment.sh
+
+${GREEN}详细文档:${NC}
+  EXPERIMENT_GUIDE.md
+
+${BLUE}========================================${NC}
+EOF
+    exit 0
+}
+
+# 检查是否请求帮助
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+fi
+
+# 自动检测项目目录（脚本所在目录）
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$SCRIPT_DIR"
+DATA_DIR="$PROJECT_DIR/assignment_data"
+
+# 配置参数（可通过命令行参数覆盖）
+GRID_SIZE=${1:-10}
+NUM_CARS=${2:-4}
+NUM_ORDERS=${3:-10}
+STRATEGY=${4:-"GREEDY_NEAREST"}
+
+# 时间配置
+BACKEND_WAIT=5
+FRONTEND_WAIT=10
+COLLECT_INTERVAL_1=20
+COLLECT_INTERVAL_2=40
+COLLECT_INTERVAL_3=40
+
+# 依赖检查函数
+check_dependencies() {
+    local missing_deps=()
+    
+    command -v curl >/dev/null 2>&1 || missing_deps+=("curl")
+    command -v python3 >/dev/null 2>&1 || missing_deps+=("python3")
+    command -v npm >/dev/null 2>&1 || missing_deps+=("npm")
+    
+    if [ ${#missing_deps[@]} -ne 0 ]; then
+        echo -e "${RED}❌ 缺少必要依赖: ${missing_deps[*]}${NC}"
+        echo -e "${YELLOW}请先安装缺失的依赖${NC}"
+        exit 1
+    fi
+}
+
+# 清理函数（错误时调用）
+cleanup() {
+    echo -e "\n${YELLOW}⚠️  检测到错误，正在清理...${NC}"
+    
+    if [ -n "$BACKEND_PID" ] && kill -0 $BACKEND_PID 2>/dev/null; then
+        kill $BACKEND_PID 2>/dev/null
+        echo "已停止后端服务 (PID: $BACKEND_PID)"
+    fi
+    
+    if [ -n "$FRONTEND_PID" ] && kill -0 $FRONTEND_PID 2>/dev/null; then
+        kill $FRONTEND_PID 2>/dev/null
+        echo "已停止前端服务 (PID: $FRONTEND_PID)"
+    fi
+    
+    pkill -f "web_backend/main.py" 2>/dev/null || true
+    pkill -f "vite" 2>/dev/null || true
+    
+    echo -e "${GREEN}✅ 清理完成${NC}"
+    exit 1
+}
+
+# 设置错误时的清理陷阱
+trap cleanup ERR INT TERM
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  多智能体系统功能展示实验${NC}"
 echo -e "${BLUE}========================================${NC}"
+echo -e "${YELLOW}实验配置:${NC}"
+echo -e "  网格大小: ${GRID_SIZE}×${GRID_SIZE}"
+echo -e "  车辆数量: ${NUM_CARS} 辆"
+echo -e "  订单数量: ${NUM_ORDERS} 个"
+echo -e "  调度策略: ${STRATEGY}"
+echo -e "${BLUE}========================================${NC}\n"
+
+# 检查依赖
+check_dependencies
 
 # 步骤 1: 环境准备
-echo -e "\n${GREEN}[步骤 1/6] 环境准备${NC}"
+echo -e "\n${GREEN}[步骤 1/7] 环境准备${NC}"
 cd "$PROJECT_DIR"
+
+# 检查虚拟环境
+if [ ! -d "venv" ]; then
+    echo -e "${RED}❌ 虚拟环境不存在，请先运行: python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt${NC}"
+    exit 1
+fi
+
 source venv/bin/activate
 
 echo "创建数据保存目录..."
@@ -31,7 +163,7 @@ mkdir -p "$DATA_DIR/plots"
 echo -e "${GREEN}✅ 目录创建完成${NC}"
 
 # 步骤 2: 启动 Web 后端
-echo -e "\n${GREEN}[步骤 2/6] 启动 Web 后端服务${NC}"
+echo -e "\n${GREEN}[步骤 2/7] 启动 Web 后端服务${NC}"
 cd "$PROJECT_DIR/web_backend"
 "$PROJECT_DIR/venv/bin/python" main.py > "$DATA_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
@@ -42,16 +174,27 @@ echo $BACKEND_PID > "$DATA_DIR/backend.pid"
 echo "等待后端启动..."
 sleep 5
 
-# 检查后端是否正常运行
-if curl -s http://localhost:8001/ > /dev/null; then
-    echo -e "${GREEN}✅ 后端服务启动成功${NC}"
+# 检查后端是否正常运行（重试机制）
+BACKEND_READY=0
+for i in {1..10}; do
+    if curl -s http://localhost:8001/ > /dev/null 2>&1; then
+        BACKEND_READY=1
+        break
+    fi
+    echo -n "."
+    sleep 1
+done
+
+if [ $BACKEND_READY -eq 1 ]; then
+    echo -e "\n${GREEN}✅ 后端服务启动成功${NC}"
 else
-    echo -e "${RED}❌ 后端服务启动失败，请检查日志: $DATA_DIR/backend.log${NC}"
-    exit 1
+    echo -e "\n${RED}❌ 后端服务启动失败，请检查日志: $DATA_DIR/backend.log${NC}"
+    tail -20 "$DATA_DIR/backend.log"
+    cleanup
 fi
 
 # 步骤 3: 启动 Web 前端
-echo -e "\n${GREEN}[步骤 3/6] 启动 Web 前端服务${NC}"
+echo -e "\n${GREEN}[步骤 3/7] 启动 Web 前端服务${NC}"
 cd "$PROJECT_DIR/web_frontend"
 
 # 检查是否需要安装依赖
@@ -66,32 +209,55 @@ echo "前端进程 PID: $FRONTEND_PID"
 echo $FRONTEND_PID > "$DATA_DIR/frontend.pid"
 
 echo "等待前端启动..."
-sleep 10
+FRONTEND_READY=0
+for i in {1..20}; do
+    if curl -s http://localhost:3000/ > /dev/null 2>&1; then
+        FRONTEND_READY=1
+        break
+    fi
+    echo -n "."
+    sleep 1
+done
 
-echo -e "${GREEN}✅ 前端服务启动成功${NC}"
+if [ $FRONTEND_READY -eq 1 ]; then
+    echo -e "\n${GREEN}✅ 前端服务启动成功${NC}"
+else
+    echo -e "\n${YELLOW}⚠️  前端可能未完全就绪，但将继续执行${NC}"
+fi
 echo -e "${YELLOW}📱 前端地址: http://localhost:3000${NC}"
 echo -e "${YELLOW}📱 多智能体监控: http://localhost:3000/multi-agent${NC}"
 
 # 步骤 4: 创建仿真并运行
-echo -e "\n${GREEN}[步骤 4/6] 创建并运行仿真${NC}"
+echo -e "\n${GREEN}[步骤 4/7] 创建并运行仿真${NC}"
 cd "$PROJECT_DIR"
 
 echo "创建仿真实例..."
-curl -X POST http://localhost:8001/api/simulation/create \
+CREATE_RESPONSE=$(curl -s -X POST http://localhost:8001/api/simulation/create \
   -H "Content-Type: application/json" \
-  -d '{
-    "grid_size": 10,
-    "num_cars": 4,
-    "strategy": "GREEDY_NEAREST",
-    "enable_logging": true
-  }' > /dev/null 2>&1
+  -d "{
+    \"grid_size\": $GRID_SIZE,
+    \"num_cars\": $NUM_CARS,
+    \"strategy\": \"$STRATEGY\",
+    \"enable_logging\": true
+  }")
+
+if echo "$CREATE_RESPONSE" | grep -q "success\|created"; then
+    echo -e "${GREEN}✅ 仿真创建成功${NC}"
+else
+    echo -e "${RED}❌ 仿真创建失败: $CREATE_RESPONSE${NC}"
+    cleanup
+fi
 
 echo -e "${GREEN}✅ 仿真创建成功${NC}"
 
-echo "添加 10 个随机订单..."
-for i in {1..10}; do
-  curl -s -X POST http://localhost:8001/api/orders/random > /dev/null
-  echo -n "."
+echo "添加 $NUM_ORDERS 个随机订单..."
+for i in $(seq 1 $NUM_ORDERS); do
+  ORDER_RESP=$(curl -s -X POST http://localhost:8001/api/orders/random)
+  if echo "$ORDER_RESP" | grep -q "success\|order"; then
+    echo -n "."
+  else
+    echo -n "x"
+  fi
   sleep 0.3
 done
 echo ""
@@ -105,7 +271,7 @@ curl -X POST http://localhost:8001/api/simulation/control \
 echo -e "${GREEN}✅ 仿真已启动，自动步进中...${NC}"
 
 # 步骤 5: 数据采集
-echo -e "\n${GREEN}[步骤 5/6] 采集运行数据${NC}"
+echo -e "\n${GREEN}[步骤 5/7] 采集运行数据${NC}"
 echo -e "${YELLOW}⏱️  等待仿真运行并采集数据（约 2 分钟）...${NC}"
 echo ""
 echo -e "${BLUE}📸 请在浏览器中打开以下地址并截图：${NC}"
@@ -151,8 +317,15 @@ curl -s "http://localhost:8001/api/analytics/export" | \
   > "$DATA_DIR/csv_exports/simulation_frames.csv"
 echo -e "${GREEN}✅ 运行日志已导出${NC}"
 
-# 步骤 6: 生成分析图表
-echo -e "\n${GREEN}[步骤 6/6] 生成性能分析图表${NC}"
+# 步骤 6: 停止仿真
+echo -e "\n${GREEN}[步骤 6/7] 停止仿真${NC}"
+curl -s -X POST http://localhost:8001/api/simulation/control \
+  -H "Content-Type: application/json" \
+  -d '{"command": "stop"}' > /dev/null 2>&1
+echo -e "${GREEN}✅ 仿真已停止${NC}"
+
+# 步骤 7: 生成分析图表
+echo -e "\n${GREEN}[步骤 7/7] 生成性能分析图表${NC}"
 
 cat > "$DATA_DIR/generate_plots.py" << 'PLOTSCRIPT'
 import json
@@ -174,6 +347,11 @@ try:
     perf_100 = json.load(open(DATA_DIR / 'json_data/perf_step100.json'))
 except FileNotFoundError as e:
     print(f"错误: 找不到数据文件 {e}")
+    print("提示: 请确保实验已运行足够长时间以采集所有数据点")
+    exit(1)
+except json.JSONDecodeError as e:
+    print(f"错误: JSON 解析失败 {e}")
+    print("提示: 数据文件可能损坏，请重新运行实验")
     exit(1)
 
 # 图 1：完成率随时间变化
@@ -386,29 +564,77 @@ INFO
 # 创建停止脚本
 cat > "$PROJECT_DIR/stop_experiment.sh" << 'STOPSCRIPT'
 #!/bin/bash
-DATA_DIR="/Users/lifulin/Desktop/CampusFleet AI/assignment_data"
+# 停止实验脚本
 
-echo "停止 Web 服务..."
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DATA_DIR="$SCRIPT_DIR/assignment_data"
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  停止实验服务${NC}"
+echo -e "${BLUE}========================================${NC}"
+
+# 停止记录的进程
+STOPPED_COUNT=0
 
 if [ -f "$DATA_DIR/backend.pid" ]; then
     BACKEND_PID=$(cat "$DATA_DIR/backend.pid")
-    kill $BACKEND_PID 2>/dev/null && echo "✅ 后端服务已停止"
+    if kill -0 $BACKEND_PID 2>/dev/null; then
+        kill $BACKEND_PID 2>/dev/null
+        echo -e "${GREEN}✅ 后端服务已停止 (PID: $BACKEND_PID)${NC}"
+        STOPPED_COUNT=$((STOPPED_COUNT + 1))
+    else
+        echo -e "${YELLOW}⚠️  后端服务已不在运行${NC}"
+    fi
     rm "$DATA_DIR/backend.pid"
 fi
 
 if [ -f "$DATA_DIR/frontend.pid" ]; then
     FRONTEND_PID=$(cat "$DATA_DIR/frontend.pid")
-    kill $FRONTEND_PID 2>/dev/null && echo "✅ 前端服务已停止"
+    if kill -0 $FRONTEND_PID 2>/dev/null; then
+        kill $FRONTEND_PID 2>/dev/null
+        echo -e "${GREEN}✅ 前端服务已停止 (PID: $FRONTEND_PID)${NC}"
+        STOPPED_COUNT=$((STOPPED_COUNT + 1))
+    else
+        echo -e "${YELLOW}⚠️  前端服务已不在运行${NC}"
+    fi
     rm "$DATA_DIR/frontend.pid"
 fi
 
 # 清理所有相关进程
-pkill -f "web_backend/main.py" 2>/dev/null
-pkill -f "vite" 2>/dev/null
+echo "清理残留进程..."
+KILLED_BACKEND=$(pkill -f "web_backend/main.py" 2>/dev/null; echo $?)
+KILLED_FRONTEND=$(pkill -f "vite" 2>/dev/null; echo $?)
 
-echo "✅ 所有服务已停止"
+if [ $KILLED_BACKEND -eq 0 ] || [ $KILLED_FRONTEND -eq 0 ]; then
+    echo -e "${GREEN}✅ 清理了残留进程${NC}"
+fi
+
+# 检查端口是否释放
+sleep 1
+if lsof -i :8001 >/dev/null 2>&1; then
+    echo -e "${RED}⚠️  端口 8001 仍被占用${NC}"
+else
+    echo -e "${GREEN}✅ 端口 8001 已释放${NC}"
+fi
+
+if lsof -i :3000 >/dev/null 2>&1; then
+    echo -e "${RED}⚠️  端口 3000 仍被占用${NC}"
+else
+    echo -e "${GREEN}✅ 端口 3000 已释放${NC}"
+fi
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${GREEN}✅ 所有服务已停止${NC}"
+echo -e "${BLUE}========================================${NC}"
 STOPSCRIPT
 
 chmod +x "$PROJECT_DIR/stop_experiment.sh"
 
-echo -e "${GREEN}提示: 停止脚本已创建${NC}"
+echo -e "${GREEN}提示: 停止脚本已创建并设置为可执行${NC}"
