@@ -83,34 +83,34 @@ def plot_comparison(results_dqn, results_double_dqn):
     output_dir = Path("experiments/results")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 设置中文字体
-    plt.rcParams["font.sans-serif"] = ["Arial Unicode MS", "SimHei"]
+    # Use default font (no Chinese font needed)
+    plt.rcParams["font.sans-serif"] = ["DejaVu Sans", "Arial"]
     plt.rcParams["axes.unicode_minus"] = False
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle("标准 DQN vs Double DQN 性能对比", fontsize=16, fontweight="bold")
+    fig.suptitle("Standard DQN vs Double DQN Performance Comparison", fontsize=16, fontweight="bold")
 
     # 1. 奖励曲线
     ax = axes[0, 0]
     if "episode_rewards" in results_dqn:
-        ax.plot(results_dqn["episode_rewards"], label="标准 DQN", alpha=0.7, linewidth=2)
+        ax.plot(results_dqn["episode_rewards"], label="Standard DQN", alpha=0.7, linewidth=2)
     if "episode_rewards" in results_double_dqn:
         ax.plot(results_double_dqn["episode_rewards"], label="Double DQN", alpha=0.7, linewidth=2)
     ax.set_xlabel("Episode")
     ax.set_ylabel("Total Reward")
-    ax.set_title("Episode 奖励对比")
+    ax.set_title("Episode Rewards Comparison")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
     # 2. 完成率曲线
     ax = axes[0, 1]
     if "completion_rates" in results_dqn:
-        ax.plot(results_dqn["completion_rates"], label="标准 DQN", alpha=0.7, linewidth=2)
+        ax.plot(results_dqn["completion_rates"], label="Standard DQN", alpha=0.7, linewidth=2)
     if "completion_rates" in results_double_dqn:
         ax.plot(results_double_dqn["completion_rates"], label="Double DQN", alpha=0.7, linewidth=2)
     ax.set_xlabel("Episode")
     ax.set_ylabel("Completion Rate (%)")
-    ax.set_title("订单完成率对比")
+    ax.set_title("Order Completion Rate Comparison")
     ax.legend()
     ax.grid(True, alpha=0.3)
     ax.set_ylim([0, 105])
@@ -118,12 +118,12 @@ def plot_comparison(results_dqn, results_double_dqn):
     # 3. 平均距离对比
     ax = axes[1, 0]
     if "avg_distances" in results_dqn:
-        ax.plot(results_dqn["avg_distances"], label="标准 DQN", alpha=0.7, linewidth=2)
+        ax.plot(results_dqn["avg_distances"], label="Standard DQN", alpha=0.7, linewidth=2)
     if "avg_distances" in results_double_dqn:
         ax.plot(results_double_dqn["avg_distances"], label="Double DQN", alpha=0.7, linewidth=2)
     ax.set_xlabel("Episode")
     ax.set_ylabel("Average Distance")
-    ax.set_title("平均配送距离对比")
+    ax.set_title("Average Delivery Distance Comparison")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
@@ -135,7 +135,7 @@ def plot_comparison(results_dqn, results_double_dqn):
         dqn_losses_smooth = np.convolve(
             results_dqn["losses"], np.ones(window) / window, mode="valid"
         )
-        ax.plot(dqn_losses_smooth, label="标准 DQN", alpha=0.7, linewidth=2)
+        ax.plot(dqn_losses_smooth, label="Standard DQN", alpha=0.7, linewidth=2)
     if "losses" in results_double_dqn:
         double_dqn_losses_smooth = np.convolve(
             results_double_dqn["losses"], np.ones(window) / window, mode="valid"
@@ -143,13 +143,13 @@ def plot_comparison(results_dqn, results_double_dqn):
         ax.plot(double_dqn_losses_smooth, label="Double DQN", alpha=0.7, linewidth=2)
     ax.set_xlabel("Training Step")
     ax.set_ylabel("Loss")
-    ax.set_title("训练损失对比（平滑）")
+    ax.set_title("Training Loss Comparison (Smoothed)")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.savefig(output_dir / "dqn_comparison.png", dpi=300, bbox_inches="tight")
-    print(f"对比图表已保存: {output_dir / 'dqn_comparison.png'}")
+    print(f"Comparison chart saved: {output_dir / 'dqn_comparison.png'}")
 
     plt.close()
 

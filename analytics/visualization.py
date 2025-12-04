@@ -25,8 +25,8 @@ class DataVisualizer:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
-        # 设置中文字体支持
-        plt.rcParams["font.sans-serif"] = ["Arial Unicode MS", "SimHei", "DejaVu Sans"]
+        # Use default font (English only, no Chinese characters)
+        plt.rcParams["font.sans-serif"] = ["DejaVu Sans", "Arial", "Helvetica"]
         plt.rcParams["axes.unicode_minus"] = False
 
     def load_data(self, frames_csv: str, cars_csv: str, orders_csv: str = None) -> tuple:

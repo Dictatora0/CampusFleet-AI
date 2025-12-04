@@ -417,7 +417,7 @@ class TrainingManager:
             return
 
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle(f"{self.agent_type} 训练进度", fontsize=16)
+        fig.suptitle(f"{self.agent_type} Training Progress", fontsize=16)
 
         episodes = range(len(self.metrics.episode_rewards))
 
@@ -426,9 +426,9 @@ class TrainingManager:
         axes[0, 0].plot(
             episodes, pd.Series(self.metrics.episode_rewards).rolling(50).mean(), "r-", linewidth=2
         )
-        axes[0, 0].set_title("Episode奖励")
+        axes[0, 0].set_title("Episode Rewards")
         axes[0, 0].set_xlabel("Episode")
-        axes[0, 0].set_ylabel("总奖励")
+        axes[0, 0].set_ylabel("Total Reward")
         axes[0, 0].grid(True)
 
         # 完成率
@@ -436,9 +436,9 @@ class TrainingManager:
         axes[0, 1].plot(
             episodes, pd.Series(self.metrics.completion_rates).rolling(50).mean(), "g-", linewidth=2
         )
-        axes[0, 1].set_title("订单完成率")
+        axes[0, 1].set_title("Order Completion Rate")
         axes[0, 1].set_xlabel("Episode")
-        axes[0, 1].set_ylabel("完成率")
+        axes[0, 1].set_ylabel("Completion Rate (%)")
         axes[0, 1].grid(True)
 
         # 平均距离
@@ -446,9 +446,9 @@ class TrainingManager:
         axes[1, 0].plot(
             episodes, pd.Series(self.metrics.avg_distances).rolling(50).mean(), "b-", linewidth=2
         )
-        axes[1, 0].set_title("平均配送距离")
+        axes[1, 0].set_title("Average Delivery Distance")
         axes[1, 0].set_xlabel("Episode")
-        axes[1, 0].set_ylabel("距离")
+        axes[1, 0].set_ylabel("Distance")
         axes[1, 0].grid(True)
 
         # 成功率
@@ -459,9 +459,9 @@ class TrainingManager:
             "orange",
             linewidth=2,
         )
-        axes[1, 1].set_title("任务成功率")
+        axes[1, 1].set_title("Task Success Rate")
         axes[1, 1].set_xlabel("Episode")
-        axes[1, 1].set_ylabel("成功率")
+        axes[1, 1].set_ylabel("Success Rate (%)")
         axes[1, 1].grid(True)
 
         plt.tight_layout()
