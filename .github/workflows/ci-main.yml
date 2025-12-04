@@ -41,12 +41,16 @@ jobs:
         run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
 
       - name: Run tests with strict mode
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/ -v --tb=short --strict-markers
 
       - name: Generate coverage report
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
-          PYTHONPATH=${{ github.workspace }} pytest tests/ --cov=core --cov-report=xml --cov-report=term --cov-fail-under=90
+          pytest tests/ --cov=core --cov-report=xml --cov-report=term --cov-fail-under=90
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

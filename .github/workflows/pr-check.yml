@@ -73,6 +73,8 @@ jobs:
         run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
 
       - name: Run quick tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/ -v --tb=line -x
 

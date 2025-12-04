@@ -46,10 +46,14 @@ jobs:
           mypy core agents algorithms analytics env rl_agents --config-file=pyproject.toml || true
 
       - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/ -v --tb=short --maxfail=3
 
       - name: Run integration tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests_integration/ -v --tb=short --maxfail=2 || true
 
