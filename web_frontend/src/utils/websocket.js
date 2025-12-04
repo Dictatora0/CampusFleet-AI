@@ -31,6 +31,7 @@ class WebSocketManager {
     this.heartbeatInterval = 30000;
     this.url = `ws://${location.host}/ws/simulation`;
     this.isFirstConnection = true; // 标记是否首次连接
+    this.shouldReconnect = true; // 是否应该重连
 
     // 如果是开发环境，使用固定端口
     if (process.env.NODE_ENV === "development") {
@@ -147,8 +148,8 @@ class WebSocketManager {
     // 停止心跳
     this.stopHeartbeat();
 
-    // 如果不是正常关闭，尝试重连
-    if (event.code !== 1000) {
+    // 如果不是正常关闭且应该重连，尝试重连
+    if (event.code !== 1000 && this.shouldReconnect) {
       this.scheduleReconnect();
     }
   }
@@ -203,16 +204,25 @@ class WebSocketManager {
    * 安排重连
    */
   async scheduleReconnect() {
+    // 检查是否应该重连
+    if (!this.shouldReconnect) {
+      console.log("⏸️ 已停止自动重连");
+      return;
+    }
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error(
         `❌ 重连失败，已达到最大尝试次数 (${this.maxReconnectAttempts})`
       );
 
+      // 停止自动重连
+      this.shouldReconnect = false;
+
       ElNotification({
         title: "连接失败",
-        message: `WebSocket重连失败，请检查网络连接`,
+        message: `WebSocket重连失败，请刷新页面或检查后端服务`,
         type: "error",
-        duration: 5000,
+        duration: 0, // 不自动关闭
       });
 
       const store = await getStore();
@@ -251,6 +261,7 @@ class WebSocketManager {
 
     this.disconnect();
     this.reconnectAttempts = 0;
+    this.shouldReconnect = true; // 重置重连标志
 
     const store = await getStore();
     if (store) {
@@ -268,6 +279,9 @@ class WebSocketManager {
   disconnect() {
     console.log("🔌 断开WebSocket连接");
 
+    // 停止自动重连
+    this.shouldReconnect = false;
+
     // 清理定时器
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -276,9 +290,9 @@ class WebSocketManager {
 
     this.stopHeartbeat();
 
-    // 关闭连接
+    // 关闭WebSocket连接
     if (this.ws) {
-      this.ws.close(1000, "手动断开");
+      this.ws.close(1000, "Client disconnect"); // 1000 = 正常关闭
       this.ws = null;
     }
   }
