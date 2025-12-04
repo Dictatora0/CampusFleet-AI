@@ -97,6 +97,7 @@ class TrainingManager:
         agent_type: str = "PPO",
         environment_config: Dict[str, Any] = None,
         training_config: Dict[str, Any] = None,
+        agent_config: Dict[str, Any] = None,
         save_dir: str = "rl_models",
     ):
         """
@@ -110,6 +111,7 @@ class TrainingManager:
         """
         self.agent_type = agent_type
         self.save_dir = save_dir
+        self.agent_config = agent_config or {}
 
         # 创建保存目录
         os.makedirs(save_dir, exist_ok=True)
@@ -139,15 +141,19 @@ class TrainingManager:
         action_dim = self.env.action_space.nvec[0]  # MultiDiscrete空间
 
         if agent_type.upper() == "DQN":
-            self.agent = DQNAgent(
-                state_dim=state_dim,
-                action_dim=action_dim,
-                learning_rate=1e-3,
-                gamma=0.95,
-                epsilon_start=0.9,
-                epsilon_end=0.01,
-                epsilon_decay=int(self.train_config["max_episodes"] * 0.8),
-            )
+            # 合并默认配置和用户配置
+            dqn_params = {
+                'state_dim': state_dim,
+                'action_dim': action_dim,
+                'learning_rate': 1e-3,
+                'gamma': 0.95,
+                'epsilon_start': 0.9,
+                'epsilon_end': 0.01,
+                'epsilon_decay': int(self.train_config["max_episodes"] * 0.8),
+                'use_double_dqn': False,  # 默认使用标准 DQN
+            }
+            dqn_params.update(self.agent_config)
+            self.agent = DQNAgent(**dqn_params)
         elif agent_type.upper() == "PPO":
             self.agent = PPOAgent(
                 state_dim=state_dim,

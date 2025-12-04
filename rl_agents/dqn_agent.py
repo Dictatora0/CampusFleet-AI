@@ -139,6 +139,7 @@ class DQNAgent:
         target_update: int = 100,
         hidden_dims: List[int] = [512, 256, 128],
         use_double_dqn: bool = False,
+        device: Optional[str] = None,
     ):
         """
         初始化DQN智能体
@@ -309,7 +310,9 @@ class DQNAgent:
             if self.use_double_dqn:
                 # Double DQN: 用在线网络选择动作，用目标网络评估Q值
                 next_actions = self.q_network(next_states).argmax(1)
-                next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze()
+                next_q_values = (
+                    self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze()
+                )
             else:
                 # 标准 DQN: 直接用目标网络选择最大Q值
                 next_q_values = self.target_network(next_states).max(1)[0]
