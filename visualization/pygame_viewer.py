@@ -3,6 +3,7 @@ Pygame可视化界面 - 提供图形化的仿真界面
 """
 
 import sys
+from typing import Tuple
 
 try:
     import pygame
@@ -12,7 +13,6 @@ try:
 except ImportError as e:
     print(f"Pygame未安装：{e}")
     PYGAME_AVAILABLE = False
-
 
 
 class PygameViewer:
@@ -203,15 +203,15 @@ class PygameViewer:
             # 绘制边框
             pygame.draw.circle(self.screen, (200, 150, 0), (x, y), self.cell_size // 3, 2)
 
-            # 绘制闪电图标
-            bolt_points = [
-                (x - 4, y - 8),
-                (x + 2, y - 2),
-                (x - 2, y + 2),
-                (x + 4, y + 8),
-                (x, y + 2),
-                (x + 2, y - 4),
-            ]
+            # 绘制闪电图标（已注释）
+            # bolt_points = [
+            #     (x - 4, y - 8),
+            #     (x + 2, y - 2),
+            #     (x - 2, y + 2),
+            #     (x + 4, y + 8),
+            #     (x, y + 2),
+            #     (x + 2, y - 4),
+            # ]
             # pygame.draw.polygon(self.screen, (255, 255, 255), bolt_points)
 
     def draw_car(
@@ -460,7 +460,7 @@ class PygameViewer:
         # 绘制渐变背景
         header_height = 100
         for i in range(header_height):
-            alpha = int(255 * (1 - i / header_height * 0.2))
+            # 简单的单色背景（渐变效果已移除）
             color = (52, 58, 64)
             pygame.draw.line(self.screen, color, (0, i), (self.window_width, i))
 
