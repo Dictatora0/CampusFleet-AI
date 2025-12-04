@@ -251,7 +251,13 @@ class TrainingManager:
         print(f"最佳性能: {self.best_performance:.3f}")
         print(f"最终成功率: {final_stats['success_rate']:.3f}")
 
+        # 返回完整的训练历史数据（用于对比分析）
         return {
+            "episode_rewards": self.metrics.episode_rewards,
+            "completion_rates": self.metrics.completion_rates,
+            "avg_distances": self.metrics.avg_distances,
+            "success_rates": self.metrics.success_rates,
+            "losses": self.agent.loss_history if hasattr(self.agent, "loss_history") else [],
             "final_stats": final_stats,
             "training_time": training_time,
             "best_performance": self.best_performance,

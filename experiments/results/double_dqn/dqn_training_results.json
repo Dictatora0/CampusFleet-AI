@@ -1,0 +1,28 @@
+{
+  "agent_type": "DQN",
+  "environment_config": {
+    "grid_size": 12,
+    "num_cars": 3,
+    "max_steps": 200,
+    "max_orders_per_episode": 15
+  },
+  "training_config": {
+    "max_episodes": 300,
+    "eval_interval": 20,
+    "save_interval": 100,
+    "early_stop_threshold": 0.85,
+    "patience": 150
+  },
+  "final_statistics": {
+    "avg_reward": 3103.8913497938483,
+    "std_reward": 371.0666835265255,
+    "avg_completion_rate": 0.0,
+    "avg_distance": 1.0584439128510479,
+    "avg_efficiency": 0.9788311217429789,
+    "success_rate": 0.0,
+    "episodes": 300
+  },
+  "training_time_hours": 0.02703542192776998,
+  "best_performance": 3245.632443352043,
+  "timestamp": "2025-12-04T10:53:09.301263"
+}
