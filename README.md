@@ -170,7 +170,7 @@ CampusFleet AI/
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/CampusFleet-AI.git
+git clone https://github.com/Dictatora0/CampusFleet-AI.git
 cd "CampusFleet AI"
 
 # 创建虚拟环境（推荐）
@@ -201,6 +201,12 @@ python demo_mapf.py
 
 ```bash
 python demo_rl_training.py
+```
+
+#### RL 对比实验（Standard DQN vs Double DQN）
+
+```bash
+python experiments/rl_comparison.py
 ```
 
 #### Web 平台
@@ -262,7 +268,7 @@ python run_with_gui.py --strategy mapf_cbs --cars 5
 python run_with_gui.py --strategy ppo_learning --cars 3
 ```
 
-## � Web API 文档
+## Web API 文档
 
 ### RESTful API 端点
 
@@ -726,11 +732,11 @@ tests/
 
 项目配置了完整的 CI/CD 流程：
 
+- **ci.yml**: 核心代码质量与测试检查
 - **ci-dev.yml**: 开发分支自动测试 (Python 3.10, 3.11)
 - **ci-main.yml**: 主分支严格测试 (Python 3.8-3.11)
 - **pr-check.yml**: PR 自动检查（格式、测试、大小）
-- **release.yml**: 自动发布和版本管理
-- **docs.yml**: 文档自动构建和部署
+- **auto-merge-to-main.yml**: develop 分支测试通过后自动合并到 main
 
 ### 分支策略
 

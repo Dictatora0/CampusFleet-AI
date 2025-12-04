@@ -77,7 +77,9 @@ def test_vrp_functionality():
                 for car in context.cars:
                     capacity_info = f"载货:{car.current_capacity}/{car.max_capacity}"
                     queue_info = f"队列:{len(car.task_queue)}任务" if car.task_queue else "无队列"
-                    print(f"车辆{car.car_id}: {car.state.value[:8]} | {capacity_info} | {queue_info}")
+                    print(
+                        f"车辆{car.car_id}: {car.state.value[:8]} | {capacity_info} | {queue_info}"
+                    )
 
                 last_completed = completed_now
 

@@ -2,6 +2,7 @@
 强化学习算法对比实验
 对比标准 DQN 与 Double DQN 在多智能体调度任务中的表现
 """
+
 import json
 import sys
 from pathlib import Path
@@ -174,13 +175,13 @@ def save_comparison_results(results_dqn, results_double_dqn, env_config, trainin
         return {
             "algorithm": name,
             "final_avg_reward": float(np.mean(last_100_rewards)) if last_100_rewards else 0,
-            "final_avg_completion_rate": float(np.mean(last_100_completion))
-            if last_100_completion
-            else 0,
+            "final_avg_completion_rate": (
+                float(np.mean(last_100_completion)) if last_100_completion else 0
+            ),
             "final_avg_distance": float(np.mean(last_100_distances)) if last_100_distances else 0,
-            "best_reward": float(max(results["episode_rewards"]))
-            if results["episode_rewards"]
-            else 0,
+            "best_reward": (
+                float(max(results["episode_rewards"])) if results["episode_rewards"] else 0
+            ),
             "total_episodes": len(results.get("episode_rewards", [])),
         }
 

@@ -141,14 +141,14 @@ class TrainingManager:
         if agent_type.upper() == "DQN":
             # 合并默认配置和用户配置
             dqn_params = {
-                'state_dim': state_dim,
-                'action_dim': action_dim,
-                'learning_rate': 1e-3,
-                'gamma': 0.95,
-                'epsilon_start': 0.9,
-                'epsilon_end': 0.01,
-                'epsilon_decay': int(self.train_config["max_episodes"] * 0.8),
-                'use_double_dqn': False,  # 默认使用标准 DQN
+                "state_dim": state_dim,
+                "action_dim": action_dim,
+                "learning_rate": 1e-3,
+                "gamma": 0.95,
+                "epsilon_start": 0.9,
+                "epsilon_end": 0.01,
+                "epsilon_decay": int(self.train_config["max_episodes"] * 0.8),
+                "use_double_dqn": False,  # 默认使用标准 DQN
             }
             dqn_params.update(self.agent_config)
             self.agent = DQNAgent(**dqn_params)

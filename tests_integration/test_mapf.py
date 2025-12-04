@@ -98,9 +98,7 @@ def test_mapf_cbs():
                 for car in context.cars:
                     coord_info = ""
                     if hasattr(car, "use_coordinated_path") and car.use_coordinated_path:
-                        path_len = (
-                            len(car.coordinated_path) if car.coordinated_path else 0
-                        )
+                        path_len = len(car.coordinated_path) if car.coordinated_path else 0
                         coord_info = f"CBS路径[{car.path_time_step}/{path_len}]"
                     else:
                         coord_info = "传统规划"
@@ -124,7 +122,11 @@ def test_mapf_cbs():
         print(f" 总完成订单: {final_stats['total_completed_orders']}")
         print(f" 总移动距离: {final_stats['total_distance']}")
         print(f"🧠 CBS协调调用: {cbs_calls} 次")
-        print(f"⚡ 协调成功率: {successful_assignments}/{cbs_calls * 3:.1f}" if cbs_calls > 0 else "N/A")
+        print(
+            f"⚡ 协调成功率: {successful_assignments}/{cbs_calls * 3:.1f}"
+            if cbs_calls > 0
+            else "N/A"
+        )
 
         # MAPF算法分析
         efficiency = final_stats["total_completed_orders"] / step * 100 if step > 0 else 0

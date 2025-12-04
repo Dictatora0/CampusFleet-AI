@@ -57,9 +57,9 @@ class CarAgent:
         self.delivery_point: Optional[Tuple[int, int]] = None
 
         # VRP多订单支持
-        self.task_queue: List[
-            Dict
-        ] = []  # 任务队列 [{'type': 'pickup'/'delivery', 'order_id': str, 'location': tuple}]
+        self.task_queue: List[Dict] = (
+            []
+        )  # 任务队列 [{'type': 'pickup'/'delivery', 'order_id': str, 'location': tuple}]
         self.current_capacity = 0  # 当前载货量
         self.max_capacity = 3  # 最大载货量
 

@@ -2,6 +2,7 @@
 CampusFleet AI - FastAPI Web后端
 现代化Web接口，支持实时仿真控制和数据可视化
 """
+
 import asyncio
 import json
 import os
@@ -357,10 +358,22 @@ async def get_strategies():
     """获取可用的调度策略"""
     return {
         "strategies": [
-            {"key": "GREEDY_NEAREST", "name": "贪心最近策略", "description": "为每个订单选择最近的车辆"},
+            {
+                "key": "GREEDY_NEAREST",
+                "name": "贪心最近策略",
+                "description": "为每个订单选择最近的车辆",
+            },
             {"key": "HUNGARIAN", "name": "匈牙利算法", "description": "全局最优分配算法"},
-            {"key": "VRP_BATCHING", "name": "VRP拼单策略", "description": "车辆路径优化，支持多订单拼单"},
-            {"key": "MAPF_CBS", "name": "MAPF CBS协调", "description": "冲突感知搜索，全局协调规划"},
+            {
+                "key": "VRP_BATCHING",
+                "name": "VRP拼单策略",
+                "description": "车辆路径优化，支持多订单拼单",
+            },
+            {
+                "key": "MAPF_CBS",
+                "name": "MAPF CBS协调",
+                "description": "冲突感知搜索，全局协调规划",
+            },
         ]
     }
 
