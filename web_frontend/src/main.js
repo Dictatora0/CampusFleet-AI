@@ -12,6 +12,7 @@ import App from "./App.vue";
 import SimulationView from "./views/SimulationView.vue";
 import AnalyticsView from "./views/AnalyticsView.vue";
 import AboutView from "./views/AboutView.vue";
+import MultiAgentDashboard from "./views/MultiAgentDashboard.vue";
 
 // 路由配置
 const routes = [
@@ -20,6 +21,12 @@ const routes = [
     name: "Simulation",
     component: SimulationView,
     meta: { title: "仿真控制台" },
+  },
+  {
+    path: "/multi-agent",
+    name: "MultiAgent",
+    component: MultiAgentDashboard,
+    meta: { title: "多智能体监控" },
   },
   {
     path: "/analytics",

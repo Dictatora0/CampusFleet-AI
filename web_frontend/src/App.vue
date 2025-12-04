@@ -22,6 +22,10 @@
             <el-icon><Monitor /></el-icon>
             仿真控制台
           </el-menu-item>
+          <el-menu-item index="/multi-agent">
+            <el-icon><Van /></el-icon>
+            多智能体监控
+          </el-menu-item>
           <el-menu-item index="/analytics">
             <el-icon><DataAnalysis /></el-icon>
             数据分析
