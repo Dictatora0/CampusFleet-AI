@@ -8,6 +8,8 @@ import sys
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from core.logger import get_logger
+
 print("=" * 60)
 print("测试新增技术特性")
 print("=" * 60)
@@ -15,7 +17,6 @@ print("=" * 60)
 # 测试 1: 日志系统
 print("\n1. 测试日志系统...")
 try:
-
     logger = get_logger("test")
     logger.info("日志系统工作正常")
     logger.debug("这是调试信息")

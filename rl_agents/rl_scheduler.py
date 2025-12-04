@@ -90,7 +90,7 @@ class RLScheduler:
         self.prev_log_prob = None
         self.prev_value = None
 
-        print(f"🤖 RL调度器初始化完成")
+        print("🤖 RL调度器初始化完成")
         print(f"   智能体: {agent_type}")
         print(f"   状态维度: {state_dim}")
         print(f"   动作维度: {action_dim}")
@@ -267,13 +267,13 @@ class RLScheduler:
         """检查episode是否结束"""
         # 简单的episode终止条件
         try:
-            stats = context.get_statistics()
+            _ = context.get_statistics()
             pending_orders = getattr(context.order_agent, "pending_orders", [])
 
             # 如果没有待处理订单且所有车辆都空闲
             all_idle = all(car.is_idle() for car in context.cars)
             return len(pending_orders) == 0 and all_idle
-        except:
+        except Exception:
             return False
 
     def _fallback_schedule(self, idle_cars: List, orders: List[Order]) -> List[Tuple]:

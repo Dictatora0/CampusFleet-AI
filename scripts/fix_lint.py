@@ -2,8 +2,6 @@
 """
 自动修复常见的 flake8 linting 问题
 """
-import re
-import sys
 from pathlib import Path
 
 
@@ -11,10 +9,10 @@ def remove_unused_imports(file_path: Path, unused_imports: list):
     """删除未使用的导入"""
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-    
+
     modified = False
     new_lines = []
-    
+
     for line in lines:
         skip = False
         for unused in unused_imports:
@@ -25,10 +23,10 @@ def remove_unused_imports(file_path: Path, unused_imports: list):
                     skip = True
                     modified = True
                     break
-        
+
         if not skip:
             new_lines.append(line)
-    
+
     if modified:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(new_lines)
@@ -39,7 +37,7 @@ def fix_fstring_placeholders(file_path: Path, line_numbers: list):
     """修复 f-string 缺少占位符"""
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-    
+
     modified = False
     for line_num in line_numbers:
         idx = line_num - 1
@@ -51,7 +49,7 @@ def fix_fstring_placeholders(file_path: Path, line_numbers: list):
                 if '{' not in line:
                     lines[idx] = line.replace('f"', '"').replace("f'", "'")
                     modified = True
-    
+
     if modified:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(lines)
@@ -62,7 +60,7 @@ def fix_bare_except(file_path: Path, line_numbers: list):
     """修复裸 except"""
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-    
+
     modified = False
     for line_num in line_numbers:
         idx = line_num - 1
@@ -71,7 +69,7 @@ def fix_bare_except(file_path: Path, line_numbers: list):
             if 'except:' in line:
                 lines[idx] = line.replace('except:', 'except Exception:')
                 modified = True
-    
+
     if modified:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(lines)
@@ -82,7 +80,7 @@ def remove_unused_variables(file_path: Path, variables: dict):
     """删除未使用的变量（用 _ 替换）"""
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
-    
+
     modified = False
     for var_name, line_num in variables.items():
         idx = line_num - 1
@@ -92,7 +90,7 @@ def remove_unused_variables(file_path: Path, variables: dict):
             if f'{var_name} =' in line:
                 lines[idx] = line.replace(f'{var_name} =', '_ =')
                 modified = True
-    
+
     if modified:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(lines)
@@ -151,25 +149,25 @@ fixes = {
 
 def main():
     root = Path('/Users/lifulin/Desktop/CampusFleet AI')
-    
+
     for file_rel, fix_data in fixes.items():
         file_path = root / file_rel
         if not file_path.exists():
             print(f"✗ {file_path}: 文件不存在")
             continue
-        
+
         if 'unused_imports' in fix_data:
             remove_unused_imports(file_path, fix_data['unused_imports'])
-        
+
         if 'fstring_lines' in fix_data:
             fix_fstring_placeholders(file_path, fix_data['fstring_lines'])
-        
+
         if 'bare_except_lines' in fix_data:
             fix_bare_except(file_path, fix_data['bare_except_lines'])
-        
+
         if 'unused_vars' in fix_data:
             remove_unused_variables(file_path, fix_data['unused_vars'])
-    
+
     print("\n✅ 批量修复完成！")
     print("建议运行: flake8 . --max-line-length=100 来验证修复")
 

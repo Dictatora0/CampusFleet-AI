@@ -9,6 +9,7 @@ import sys
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+import matplotlib.pyplot as plt
 
 import numpy as np
 import pandas as pd
@@ -170,7 +171,7 @@ class TrainingManager:
         self.best_performance = -float("inf")
         self.no_improvement_count = 0
 
-        print(f" 训练管理器初始化完成")
+        print(" 训练管理器初始化完成")
         print(f"智能体: {agent_type}")
         print(f"环境: {self.env_config}")
         print(f"训练目标: {self.train_config['max_episodes']} episodes")
@@ -231,11 +232,11 @@ class TrainingManager:
 
                 # 早停检查
                 if self._check_early_stop():
-                    print(f" 达到早停条件，训练提前结束")
+                    print(" 达到早停条件，训练提前结束")
                     break
 
         except KeyboardInterrupt:
-            print(f"警告: 训练被用户中断")
+            print("警告: 训练被用户中断")
 
         finally:
             self.training = False
@@ -290,7 +291,7 @@ class TrainingManager:
             if training:
                 if self.agent_type.upper() == "DQN":
                     self.agent.store_experience(obs, action_int, reward, next_obs, done)
-                    loss = self.agent.train()
+                    _ = self.agent.train()
                 elif self.agent_type.upper() == "PPO":
                     self.agent.store_experience(obs, action[0], log_prob, reward, value, done)
                     if done or steps % 32 == 0:  # 批量更新
@@ -525,7 +526,7 @@ def train_rl_example():
     # 开始训练
     results = trainer.train_agent()
 
-    print(f" 训练完成!")
+    print(" 训练完成!")
     print(f"最佳性能: {results['best_performance']:.3f}")
     print(f"总时长: {results['training_time']/60:.2f}分钟")
 
