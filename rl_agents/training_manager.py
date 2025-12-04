@@ -358,10 +358,14 @@ class TrainingManager:
         """检查是否满足早停条件"""
         recent_stats = self.metrics.get_recent_stats(50)
 
+        # 获取早停参数，提供默认值
+        early_stop_threshold = self.train_config.get("early_stop_threshold", 0.95)
+        patience = self.train_config.get("patience", 100)
+
         # 如果成功率达到阈值且没有改进
         if (
-            recent_stats["success_rate"] >= self.train_config["early_stop_threshold"]
-            and self.no_improvement_count >= self.train_config["patience"]
+            recent_stats["success_rate"] >= early_stop_threshold
+            and self.no_improvement_count >= patience
         ):
             return True
 
