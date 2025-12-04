@@ -95,7 +95,7 @@ class TestSchedulerBasicFunctionality:
     def test_get_strategy_name(self, scheduler_greedy):
         """测试获取策略名称"""
         name = scheduler_greedy.get_strategy_name()
-        assert name == "贪心最近"
+        assert name == "Greedy Nearest"
 
     def test_set_strategy(self, scheduler_greedy):
         """测试设置策略"""
