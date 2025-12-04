@@ -164,8 +164,9 @@ class RewardCalculator:
             "deadlock_penalty": -50.0,  # 死锁严重惩罚
         }
 
-        self.prev_stats = {}
-        self.episode_start_stats = {}
+        # 统计信息
+        self.prev_stats: Dict[str, Any] = {}
+        self.episode_start_stats: Dict[str, Any] = {}
 
     def calculate_reward(
         self, context: SimulationContext, action_taken: Dict, prev_state: Optional[Dict] = None
@@ -432,7 +433,7 @@ class RLEnvironment(gym.Env):
         if self.context is None:
             return []
 
-        assignments = []
+        assignments: List[Optional[int]] = []
         pending_orders = self.context.order_agent.get_pending_orders()
 
         for car_idx, order_idx in enumerate(action):
