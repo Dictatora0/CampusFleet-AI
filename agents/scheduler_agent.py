@@ -5,7 +5,7 @@
 import os
 import sys
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 class SchedulingStrategy(Enum):

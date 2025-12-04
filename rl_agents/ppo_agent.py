@@ -4,14 +4,14 @@
 """
 
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Categorical, MultivariateNormal
+from torch.distributions import Categorical
 
 
 class ActorCriticNetwork(nn.Module):

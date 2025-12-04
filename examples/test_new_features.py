@@ -29,7 +29,7 @@ except Exception as e:
 # 测试 2: 异常类
 print("\n2. 测试自定义异常...")
 try:
-    from core.exceptions import (
+    from core.exceptions import (  # noqa: F401
         CampusFleetException,
         ConfigurationError,
         PathfindingError,
@@ -53,7 +53,9 @@ except Exception as e:
 # 测试 3: 配置管理
 print("\n3. 测试配置管理...")
 try:
-    from core.config import CarConfig, ConfigManager, SimulationConfig, config
+    from core.config import CarConfig, ConfigManager, SimulationConfig  # noqa: F401
+
+    config = ConfigManager()
 
     # 测试默认配置
     assert config.simulation.grid_size == 15

@@ -8,7 +8,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 import matplotlib.pyplot as plt
 
 import numpy as np

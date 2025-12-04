@@ -7,7 +7,7 @@ import copy
 import heapq
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 
 class ConflictType(Enum):

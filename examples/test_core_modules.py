@@ -31,7 +31,7 @@ except Exception as e:
 # 测试 2: 异常类
 print("\n2. 测试自定义异常...")
 try:
-    from core.exceptions import (
+    from core.exceptions import (  # noqa: F401
         CampusFleetException,
         CarAgentError,
         ConfigurationError,
@@ -65,7 +65,13 @@ except Exception as e:
 # 测试 3: 配置管理
 print("\n3. 测试配置管理...")
 try:
-    from core.config import CarConfig, ConfigManager, RLConfig, SimulationConfig, WebConfig
+    from core.config import (  # noqa: F401
+        CarConfig,
+        ConfigManager,
+        RLConfig,
+        SimulationConfig,
+        WebConfig,
+    )
 
     # 创建配置管理器
     config = ConfigManager()
