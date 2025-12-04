@@ -132,14 +132,14 @@ def plot_comparison(results_dqn, results_double_dqn):
 
     # 4. 损失曲线
     ax = axes[1, 1]
-    if "losses" in results_dqn:
+    window = 10
+    if "losses" in results_dqn and len(results_dqn["losses"]) > window:
         # 平滑处理
-        window = 10
         dqn_losses_smooth = np.convolve(
             results_dqn["losses"], np.ones(window) / window, mode="valid"
         )
         ax.plot(dqn_losses_smooth, label="Standard DQN", alpha=0.7, linewidth=2)
-    if "losses" in results_double_dqn:
+    if "losses" in results_double_dqn and len(results_double_dqn["losses"]) > window:
         double_dqn_losses_smooth = np.convolve(
             results_double_dqn["losses"], np.ones(window) / window, mode="valid"
         )

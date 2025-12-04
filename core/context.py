@@ -345,6 +345,14 @@ class SimulationContext:
         else:
             stats["avg_distance_per_order"] = 0
 
+        # 计算完成率
+        order_report = self.order_agent.report()
+        total_orders = order_report.get("total_orders", 0)
+        if total_orders > 0:
+            stats["completion_rate"] = self.total_completed_orders / total_orders
+        else:
+            stats["completion_rate"] = 0.0
+
         return stats
 
     def export_data(self, filename_prefix: str = "simulation") -> List[str]:

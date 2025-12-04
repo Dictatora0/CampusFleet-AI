@@ -14,15 +14,15 @@
     "patience": 150
   },
   "final_statistics": {
-    "avg_reward": 3103.8913497938483,
-    "std_reward": 371.0666835265255,
+    "avg_reward": 2959.397607865106,
+    "std_reward": 430.1139038381739,
     "avg_completion_rate": 0.0,
-    "avg_distance": 1.0584439128510479,
-    "avg_efficiency": 0.9788311217429789,
+    "avg_distance": 1.0579133924289794,
+    "avg_efficiency": 0.9788417321514205,
     "success_rate": 0.0,
     "episodes": 300
   },
-  "training_time_hours": 0.02703542192776998,
-  "best_performance": 3245.632443352043,
-  "timestamp": "2025-12-04T10:53:09.301263"
+  "training_time_hours": 0.027466893129878572,
+  "best_performance": 3287.044350420261,
+  "timestamp": "2025-12-04T10:59:00.098715"
 }
