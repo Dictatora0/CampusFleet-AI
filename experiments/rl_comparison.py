@@ -1,6 +1,11 @@
 """
 强化学习算法对比实验
 对比标准 DQN 与 Double DQN 在多智能体调度任务中的表现
+
+优化版本 v2.0:
+- 环境优化：网格 10×10（↓复杂度）、步数 350（↑时间）、订单 10（↓难度）
+- 训练优化：500 episodes（↑充分性）、阈值 0.6（更现实）、耐心 250（↑稳定性）
+- 预期改进：完成率从 ~20% 提升到 40-60%，更好地展现算法差异
 """
 
 import json
@@ -23,15 +28,20 @@ def run_comparison_experiment():
     print("强化学习算法对比实验: 标准 DQN vs Double DQN")
     print("=" * 80)
 
-    # 实验配置
-    env_config = {"grid_size": 12, "num_cars": 3, "max_steps": 200, "max_orders_per_episode": 15}
+    # 实验配置（优化后：更小网格、更多步数、更少订单 → 提高完成率）
+    env_config = {
+        "grid_size": 10,  # 从 12 改为 10，降低复杂度
+        "num_cars": 3,
+        "max_steps": 350,  # 从 200 改为 350，给更多时间完成订单
+        "max_orders_per_episode": 10,  # 从 15 改为 10，更容易达到高完成率
+    }
 
     training_config = {
-        "max_episodes": 300,
-        "eval_interval": 20,
+        "max_episodes": 500,  # 从 300 改为 500，更充分训练
+        "eval_interval": 25,  # 从 20 改为 25
         "save_interval": 100,
-        "early_stop_threshold": 0.85,
-        "patience": 150,
+        "early_stop_threshold": 0.6,  # 从 0.85 改为 0.6，更现实的目标
+        "patience": 250,  # 从 150 改为 250，更耐心等待改进
     }
 
     # 标准 DQN
