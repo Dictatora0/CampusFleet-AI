@@ -1,0 +1,38 @@
+{
+  "experiment": "DQN vs Double DQN Comparison",
+  "environment_config": {
+    "grid_size": 10,
+    "num_cars": 5,
+    "max_steps": 600,
+    "max_orders_per_episode": 10
+  },
+  "training_config": {
+    "max_episodes": 600,
+    "eval_interval": 30,
+    "save_interval": 200,
+    "early_stop_threshold": 0.45,
+    "patience": 200
+  },
+  "results": {
+    "standard_dqn": {
+      "algorithm": "Standard DQN",
+      "final_avg_reward": 3026.9421901508636,
+      "final_avg_completion_rate": 31.100472222222216,
+      "final_avg_distance": 1.0677835229456802,
+      "best_reward": 5006.299588935252,
+      "total_episodes": 330
+    },
+    "double_dqn": {
+      "algorithm": "Double DQN",
+      "final_avg_reward": 3053.01337876227,
+      "final_avg_completion_rate": 31.44044444444445,
+      "final_avg_distance": 1.0647161243965404,
+      "best_reward": 4417.984023719184,
+      "total_episodes": 300
+    }
+  },
+  "improvement": {
+    "reward": 0.8613044773777773,
+    "distance": 0.28726782940776724
+  }
+}

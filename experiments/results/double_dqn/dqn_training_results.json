@@ -1,28 +1,28 @@
 {
   "agent_type": "DQN",
   "environment_config": {
-    "grid_size": 12,
-    "num_cars": 3,
-    "max_steps": 200,
-    "max_orders_per_episode": 15
+    "grid_size": 10,
+    "num_cars": 5,
+    "max_steps": 600,
+    "max_orders_per_episode": 10
   },
   "training_config": {
-    "max_episodes": 300,
-    "eval_interval": 20,
-    "save_interval": 100,
-    "early_stop_threshold": 0.85,
-    "patience": 150
+    "max_episodes": 600,
+    "eval_interval": 30,
+    "save_interval": 200,
+    "early_stop_threshold": 0.45,
+    "patience": 200
   },
   "final_statistics": {
-    "avg_reward": 2959.397607865106,
-    "std_reward": 430.1139038381739,
-    "avg_completion_rate": 0.0,
-    "avg_distance": 1.0579133924289794,
-    "avg_efficiency": 0.9788417321514205,
-    "success_rate": 0.0,
+    "avg_reward": 3053.01337876227,
+    "std_reward": 537.4967510535942,
+    "avg_completion_rate": 31.44044444444445,
+    "avg_distance": 1.0647161243965404,
+    "avg_efficiency": 0.978705677512069,
+    "success_rate": 1.0,
     "episodes": 300
   },
-  "training_time_hours": 0.027466893129878572,
-  "best_performance": 3287.044350420261,
-  "timestamp": "2025-12-04T10:59:00.098715"
+  "training_time_hours": 0.03979467438326942,
+  "best_performance": 3320.3579148909994,
+  "timestamp": "2025-12-04T14:06:06.284523"
 }

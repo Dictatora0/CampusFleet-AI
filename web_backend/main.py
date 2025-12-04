@@ -397,6 +397,193 @@ async def export_analytics():
         raise HTTPException(status_code=500, detail=f"数据导出失败: {str(e)}")
 
 
+# ========== 多智能体系统增强API ==========
+
+@app.get("/api/agents/status")
+async def get_agents_status():
+    """获取所有智能体状态（用于智能体状态面板）"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    # 车辆智能体状态
+    vehicles = []
+    for car in sim_manager.context.cars:
+        vehicle_status = {
+            "id": car.car_id,
+            "type": "vehicle",
+            "position": list(car.position),
+            "status": "idle" if car.is_idle() else "busy",
+            "current_order": car.current_order.order_id if car.current_order else None,
+            "route_length": len(car.route) if car.route else 0,
+            "completed_orders": len(car.completed_orders),
+            "perception": {
+                "can_sense_orders": True,
+                "range": 5,
+            },
+            "decision": {
+                "method": "A* pathfinding",
+                "state": "planning" if car.route else "waiting"
+            },
+            "action": {
+                "current": "moving" if not car.is_idle() else "idle",
+                "next_position": car.route[0] if car.route else None
+            }
+        }
+        vehicles.append(vehicle_status)
+    
+    # 订单智能体状态
+    orders = []
+    for order in sim_manager.context.order_agent.orders.values():
+        order_status = {
+            "id": order.order_id,
+            "type": "order",
+            "status": order.status.name,
+            "pickup": list(order.pickup_point),
+            "delivery": list(order.delivery_point),
+        }
+        orders.append(order_status)
+    
+    # 调度智能体状态
+    scheduler = {
+        "type": "scheduler",
+        "strategy": sim_manager.context.scheduling_strategy.name,
+        "total_assignments": sim_manager.step_count,
+        "pending_orders": len([o for o in sim_manager.context.order_agent.orders.values() 
+                              if o.status.name == "PENDING"]),
+        "active_vehicles": len([c for c in sim_manager.context.cars if not c.is_idle()]),
+    }
+    
+    # 环境智能体状态
+    environment = {
+        "type": "environment",
+        "grid_size": sim_manager.context.grid.size,
+        "current_step": sim_manager.step_count,
+        "total_orders": len(sim_manager.context.order_agent.orders),
+        "completed_orders": len([o for o in sim_manager.context.order_agent.orders.values() 
+                                if o.status.name == "COMPLETED"])
+    }
+    
+    return {
+        "status": "success",
+        "timestamp": datetime.now().isoformat(),
+        "agents": {
+            "vehicles": vehicles,
+            "orders": orders,
+            "scheduler": scheduler,
+            "environment": environment
+        }
+    }
+
+
+@app.get("/api/communication/logs")
+async def get_communication_logs():
+    """获取智能体通信日志（用于通信日志窗口）"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    logs = []
+    current_step = sim_manager.step_count
+    
+    # 车辆状态报告
+    for car in sim_manager.context.cars:
+        logs.append({
+            "step": current_step,
+            "timestamp": datetime.now().isoformat(),
+            "type": "status_report",
+            "sender": f"Vehicle-{car.car_id}",
+            "receiver": "Scheduler",
+            "message": f"Position: {car.position}, Status: {'idle' if car.is_idle() else 'busy'}",
+            "priority": "normal"
+        })
+    
+    # 任务分配消息
+    for car in sim_manager.context.cars:
+        if not car.is_idle() and car.current_order:
+            logs.append({
+                "step": current_step,
+                "timestamp": datetime.now().isoformat(),
+                "type": "task_assignment",
+                "sender": "Scheduler",
+                "receiver": f"Vehicle-{car.car_id}",
+                "message": f"Assigned Order-{car.current_order.order_id}",
+                "priority": "high"
+            })
+    
+    return {
+        "status": "success",
+        "logs": logs[-20:],
+        "total_messages": len(logs),
+        "communication_stats": {
+            "status_reports": len([l for l in logs if l["type"] == "status_report"]),
+            "task_assignments": len([l for l in logs if l["type"] == "task_assignment"]),
+        }
+    }
+
+
+@app.get("/api/collaboration/decisions")
+async def get_collaboration_decisions():
+    """获取协作决策信息（用于协作决策可视化）"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    assignments = []
+    for car in sim_manager.context.cars:
+        if not car.is_idle() and car.current_order:
+            order = car.current_order
+            distance = abs(order.pickup_point[0] - car.position[0]) + \
+                      abs(order.pickup_point[1] - car.position[1])
+            
+            assignments.append({
+                "vehicle_id": car.car_id,
+                "order_id": order.order_id,
+                "distance_to_pickup": distance,
+                "eta_steps": len(car.route) if car.route else 0,
+                "decision_reason": "Optimal assignment"
+            })
+    
+    active_vehicles = len([c for c in sim_manager.context.cars if not c.is_idle()])
+    total_vehicles = len(sim_manager.context.cars)
+    
+    return {
+        "status": "success",
+        "current_step": sim_manager.step_count,
+        "assignments": assignments,
+        "collaboration_metrics": {
+            "vehicle_utilization": active_vehicles / total_vehicles if total_vehicles > 0 else 0,
+            "parallel_execution": active_vehicles,
+        }
+    }
+
+
+@app.get("/api/performance/metrics")
+async def get_performance_metrics():
+    """获取实时性能指标（用于实时性能图表）"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    total_orders = len(sim_manager.context.order_agent.orders)
+    completed_orders = len([o for o in sim_manager.context.order_agent.orders.values() 
+                           if o.status.name == "COMPLETED"])
+    pending_orders = len([o for o in sim_manager.context.order_agent.orders.values() 
+                         if o.status.name == "PENDING"])
+    
+    completion_rate = (completed_orders / total_orders * 100) if total_orders > 0 else 0
+    
+    return {
+        "status": "success",
+        "current_step": sim_manager.step_count,
+        "metrics": {
+            "completion_rate": round(completion_rate, 2),
+            "completed_orders": completed_orders,
+            "total_orders": total_orders,
+            "pending_orders": pending_orders,
+            "vehicle_utilization": round(len([c for c in sim_manager.context.cars if not c.is_idle()]) 
+                                        / len(sim_manager.context.cars) * 100, 2),
+        },
+        "performance_grade": "A" if completion_rate > 60 else "B" if completion_rate > 40 else "C"
+    }
+
+
 # ========== WebSocket 端点 ==========
 
 
