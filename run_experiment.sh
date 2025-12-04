@@ -33,7 +33,7 @@ echo -e "${GREEN}✅ 目录创建完成${NC}"
 # 步骤 2: 启动 Web 后端
 echo -e "\n${GREEN}[步骤 2/6] 启动 Web 后端服务${NC}"
 cd "$PROJECT_DIR/web_backend"
-python main.py > "$DATA_DIR/backend.log" 2>&1 &
+"$PROJECT_DIR/venv/bin/python" main.py > "$DATA_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo "后端进程 PID: $BACKEND_PID"
 echo $BACKEND_PID > "$DATA_DIR/backend.pid"

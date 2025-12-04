@@ -27,7 +27,7 @@ from core import SimulationContext  # noqa: E402
 app = FastAPI(
     title="CampusFleet AI Web API",
     description="智能校园配送系统 - Web控制接口",
-    version="3.0.0",
+    version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
@@ -121,14 +121,12 @@ class SimulationManager:
 
             # 记录数据
             if self.data_logger:
-                frame_data = {
-                    "step": self.step_count,
-                    "timestamp": datetime.now().isoformat(),
-                    "vehicles": [car.report() for car in self.context.cars],
-                    "orders": self.context.order_agent.report(),
-                    "statistics": self.context.get_statistics(),
-                }
-                self.data_logger.log_frame(frame_data)
+                self.data_logger.log_frame(
+                    step=self.step_count,
+                    cars=self.context.cars,
+                    orders=self.context.order_agent,
+                    scheduler=self.context.scheduler
+                )
 
             # 广播更新到WebSocket客户端
             asyncio.create_task(self._broadcast_state_update())
@@ -194,13 +192,14 @@ class SimulationManager:
             return {"status": "error", "message": "仿真未初始化"}
 
         try:
-            order = self.context.order_agent.create_order(tuple(pickup), tuple(delivery))
+            order_id = self.context.order_agent.create_order(tuple(pickup), tuple(delivery))
+            order = self.context.order_agent.orders.get(order_id)
             return {
                 "status": "success",
                 "order": {
-                    "id": order.order_id,
-                    "pickup": order.pickup_point,
-                    "delivery": order.delivery_point,
+                    "id": order_id,
+                    "pickup": list(order.pickup_point),
+                    "delivery": list(order.delivery_point),
                 },
             }
         except Exception as e:
@@ -323,7 +322,7 @@ async def control_simulation(command: ControlCommand):
     if command.command == "start":
         auto_step = command.params.get("auto_step", True) if command.params else True
         result = sim_manager.start_simulation(auto_step)
-    elif command.command == "stop":
+    elif command.command == "stop" or command.command == "pause":
         result = sim_manager.stop_simulation()
     elif command.command == "step":
         result = sim_manager.step_simulation()
@@ -397,6 +396,107 @@ async def export_analytics():
         raise HTTPException(status_code=500, detail=f"数据导出失败: {str(e)}")
 
 
+@app.get("/api/simulation/status")
+async def get_simulation_status():
+    """获取仿真状态（兼容端点）"""
+    return await get_simulation_state()
+
+
+@app.post("/api/orders/add")
+async def add_order(order: OrderCreate):
+    """添加订单（兼容端点）"""
+    return await create_order(order)
+
+
+@app.post("/api/orders/random")
+async def add_random_order():
+    """添加随机订单"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    import random
+    grid_size = sim_manager.context.grid_env.size
+    pickup = (random.randint(0, grid_size-1), random.randint(0, grid_size-1))
+    delivery = (random.randint(0, grid_size-1), random.randint(0, grid_size-1))
+    
+    # 确保取货点和送货点不同
+    while pickup == delivery:
+        delivery = (random.randint(0, grid_size-1), random.randint(0, grid_size-1))
+    
+    result = sim_manager.add_order(pickup, delivery)
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+    
+    return result
+
+
+@app.get("/api/orders")
+async def get_all_orders():
+    """获取所有订单"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    orders = []
+    for order in sim_manager.context.order_agent.orders.values():
+        orders.append({
+            "id": order.order_id,
+            "status": order.status.name,
+            "pickup": list(order.pickup_point),
+            "delivery": list(order.delivery_point),
+            "assigned_vehicle": None,  # 需要通过车辆查找
+            "priority": 1
+        })
+    
+    return {
+        "status": "success",
+        "orders": orders,
+        "total": len(orders)
+    }
+
+
+@app.get("/api/vehicles")
+async def get_all_vehicles():
+    """获取所有车辆"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    vehicles = []
+    for car in sim_manager.context.cars:
+        completed = getattr(car, 'completed_orders', 0)
+        vehicles.append({
+            "id": car.car_id,
+            "position": list(car.position),
+            "state": car.state.value if hasattr(car.state, 'value') else str(car.state),
+            "battery": getattr(car, 'battery', 100),
+            "current_order": getattr(car, 'current_order_id', None),
+            "completed_orders": completed if isinstance(completed, int) else len(completed)
+        })
+    
+    return {
+        "status": "success",
+        "vehicles": vehicles,
+        "total": len(vehicles)
+    }
+
+
+@app.post("/api/simulation/step")
+async def step_simulation(steps: int = 1):
+    """执行仿真步骤"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+    
+    for _ in range(steps):
+        result = sim_manager.step_simulation()
+        if result["status"] == "error":
+            raise HTTPException(status_code=400, detail=result["message"])
+    
+    return {
+        "status": "success",
+        "current_step": sim_manager.step_count,
+        "steps_executed": steps
+    }
+
+
 # ========== 多智能体系统增强API ==========
 
 @app.get("/api/agents/status")
@@ -413,20 +513,20 @@ async def get_agents_status():
             "type": "vehicle",
             "position": list(car.position),
             "status": "idle" if car.is_idle() else "busy",
-            "current_order": car.current_order.order_id if car.current_order else None,
-            "route_length": len(car.route) if car.route else 0,
-            "completed_orders": len(car.completed_orders),
+            "current_order": car.current_order_id if hasattr(car, 'current_order_id') else None,
+            "route_length": len(car.current_path) if hasattr(car, 'current_path') and car.current_path else 0,
+            "completed_orders": car.completed_orders if isinstance(getattr(car, 'completed_orders', 0), int) else len(getattr(car, 'completed_orders', [])),
             "perception": {
                 "can_sense_orders": True,
                 "range": 5,
             },
             "decision": {
                 "method": "A* pathfinding",
-                "state": "planning" if car.route else "waiting"
+                "state": "planning" if hasattr(car, 'current_path') and car.current_path else "waiting"
             },
             "action": {
                 "current": "moving" if not car.is_idle() else "idle",
-                "next_position": car.route[0] if car.route else None
+                "next_position": car.current_path[0] if hasattr(car, 'current_path') and car.current_path else None
             }
         }
         vehicles.append(vehicle_status)
@@ -446,7 +546,7 @@ async def get_agents_status():
     # 调度智能体状态
     scheduler = {
         "type": "scheduler",
-        "strategy": sim_manager.context.scheduling_strategy.name,
+        "strategy": sim_manager.context.scheduler.strategy.name if hasattr(sim_manager.context.scheduler, 'strategy') else "GREEDY_NEAREST",
         "total_assignments": sim_manager.step_count,
         "pending_orders": len([o for o in sim_manager.context.order_agent.orders.values() 
                               if o.status.name == "PENDING"]),
@@ -456,7 +556,7 @@ async def get_agents_status():
     # 环境智能体状态
     environment = {
         "type": "environment",
-        "grid_size": sim_manager.context.grid.size,
+        "grid_size": sim_manager.context.grid_env.size,
         "current_step": sim_manager.step_count,
         "total_orders": len(sim_manager.context.order_agent.orders),
         "completed_orders": len([o for o in sim_manager.context.order_agent.orders.values() 
@@ -498,14 +598,14 @@ async def get_communication_logs():
     
     # 任务分配消息
     for car in sim_manager.context.cars:
-        if not car.is_idle() and car.current_order:
+        if not car.is_idle() and car.current_order_id:
             logs.append({
                 "step": current_step,
                 "timestamp": datetime.now().isoformat(),
                 "type": "task_assignment",
                 "sender": "Scheduler",
                 "receiver": f"Vehicle-{car.car_id}",
-                "message": f"Assigned Order-{car.current_order.order_id}",
+                "message": f"Assigned Order-{car.current_order_id}",
                 "priority": "high"
             })
     
@@ -528,18 +628,20 @@ async def get_collaboration_decisions():
     
     assignments = []
     for car in sim_manager.context.cars:
-        if not car.is_idle() and car.current_order:
-            order = car.current_order
-            distance = abs(order.pickup_point[0] - car.position[0]) + \
-                      abs(order.pickup_point[1] - car.position[1])
-            
-            assignments.append({
-                "vehicle_id": car.car_id,
-                "order_id": order.order_id,
-                "distance_to_pickup": distance,
-                "eta_steps": len(car.route) if car.route else 0,
-                "decision_reason": "Optimal assignment"
-            })
+        if not car.is_idle() and car.current_order_id:
+            # 通过 order_id 查找订单对象
+            order = sim_manager.context.order_agent.orders.get(car.current_order_id)
+            if order:
+                distance = abs(order.pickup_point[0] - car.position[0]) + \
+                          abs(order.pickup_point[1] - car.position[1])
+                
+                assignments.append({
+                    "vehicle_id": car.car_id,
+                    "order_id": order.order_id,
+                    "distance_to_pickup": distance,
+                    "eta_steps": len(car.current_path) if hasattr(car, 'current_path') and car.current_path else 0,
+                    "decision_reason": "Optimal assignment"
+                })
     
     active_vehicles = len([c for c in sim_manager.context.cars if not c.is_idle()])
     total_vehicles = len(sim_manager.context.cars)

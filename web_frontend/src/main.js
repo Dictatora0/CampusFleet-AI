@@ -10,8 +10,6 @@ import "element-plus/dist/index.css";
 
 import App from "./App.vue";
 import SimulationView from "./views/SimulationView.vue";
-import AnalyticsView from "./views/AnalyticsView.vue";
-import AboutView from "./views/AboutView.vue";
 import MultiAgentDashboard from "./views/MultiAgentDashboard.vue";
 
 // 路由配置
@@ -27,18 +25,6 @@ const routes = [
     name: "MultiAgent",
     component: MultiAgentDashboard,
     meta: { title: "多智能体监控" },
-  },
-  {
-    path: "/analytics",
-    name: "Analytics",
-    component: AnalyticsView,
-    meta: { title: "数据分析" },
-  },
-  {
-    path: "/about",
-    name: "About",
-    component: AboutView,
-    meta: { title: "关于系统" },
   },
 ];
 
@@ -197,5 +183,5 @@ app.config.globalProperties.$ELEMENT = { size: "default" };
 // 挂载应用
 app.mount("#app");
 
-console.log("🌐 CampusFleet AI Frontend v3.0 启动成功");
+console.log("🌐 CampusFleet AI Frontend 启动成功");
 console.log("🚀 特性: VRP拼单 + MAPF协调 + 实时可视化");

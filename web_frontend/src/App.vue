@@ -5,10 +5,9 @@
       <div class="header-content">
         <div class="logo-section">
           <el-icon class="logo-icon" size="32">
-            <TruckFilled />
+            <Van />
           </el-icon>
           <h1 class="app-title">CampusFleet AI</h1>
-          <el-tag type="success" size="small">v3.0</el-tag>
         </div>
 
         <!-- 导航菜单 -->
@@ -25,14 +24,6 @@
           <el-menu-item index="/multi-agent">
             <el-icon><Van /></el-icon>
             多智能体监控
-          </el-menu-item>
-          <el-menu-item index="/analytics">
-            <el-icon><DataAnalysis /></el-icon>
-            数据分析
-          </el-menu-item>
-          <el-menu-item index="/about">
-            <el-icon><InfoFilled /></el-icon>
-            关于系统
           </el-menu-item>
         </el-menu>
 
@@ -57,23 +48,22 @@
     <el-container class="main-container">
       <router-view />
     </el-container>
-
-    <!-- 全局加载遮罩 -->
-    <el-loading
-      v-loading="websocket.reconnecting"
-      element-loading-text="正在重新连接..."
-      element-loading-background="rgba(0, 0, 0, 0.7)"
-    />
   </div>
 </template>
 
 <script>
 import { computed } from "vue";
 import { useStore } from "vuex";
+import { Monitor, Van, Connection } from "@element-plus/icons-vue";
 import WebSocketManager from "@/utils/websocket";
 
 export default {
   name: "App",
+  components: {
+    Monitor,
+    Van,
+    Connection,
+  },
   setup() {
     const store = useStore();
 
@@ -269,6 +259,10 @@ body {
 .main-container {
   flex: 1;
   background-color: #f5f7fa;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 0;
 }
 
 // Element Plus 自定义样式

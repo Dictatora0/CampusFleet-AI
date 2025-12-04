@@ -8,7 +8,7 @@ import { ElMessage, ElNotification } from "element-plus";
 const api = axios.create({
   baseURL:
     process.env.NODE_ENV === "development"
-      ? "http://localhost:8000/api"
+      ? "http://localhost:8001/api"
       : "/api",
   timeout: 30000,
   headers: {

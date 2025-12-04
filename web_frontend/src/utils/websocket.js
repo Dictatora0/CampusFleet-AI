@@ -33,7 +33,7 @@ class WebSocketManager {
 
     // 如果是开发环境，使用固定端口
     if (process.env.NODE_ENV === "development") {
-      this.url = "ws://localhost:8000/ws/simulation";
+      this.url = "ws://localhost:8001/ws/simulation";
     }
   }
 

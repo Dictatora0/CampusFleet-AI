@@ -412,8 +412,9 @@ export default {
 
 <style lang="scss" scoped>
 .simulation-view {
-  padding: 20px;
+  padding: 24px 32px;
   height: calc(100vh - 60px);
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -602,7 +603,7 @@ export default {
 // 响应式设计
 @media (max-width: 1200px) {
   .simulation-view {
-    padding: 12px;
+    padding: 16px 20px;
   }
 
   .main-content {

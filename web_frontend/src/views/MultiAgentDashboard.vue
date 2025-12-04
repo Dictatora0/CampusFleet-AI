@@ -563,9 +563,10 @@ export default {
 
 <style scoped>
 .multi-agent-dashboard {
-  padding: 20px;
+  padding: 24px 32px;
   background: #f0f2f5;
-  min-height: 100vh;
+  min-height: calc(100vh - 60px);
+  width: 100%;
 }
 
 .dashboard-title {

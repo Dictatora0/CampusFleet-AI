@@ -10,11 +10,10 @@ python-multipart==0.0.6
 websockets==12.0
 
 # 数据处理
-pydantic==2.5.0
+pydantic>=2.10.0
 python-json-logger==2.0.7
 
-# CORS支持
-python-cors==1.7.0
+# CORS支持（FastAPI 内置，无需额外安装）
 
 # 原有依赖（如果未安装）
 numpy>=1.21.0

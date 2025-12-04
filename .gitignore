@@ -19,30 +19,82 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Virtual Environment (but keep our env/ module)
 venv/
 ENV/
 .venv
+env.bak/
+venv.bak/
 # Note: We have a project module named env/, so we don't ignore it here
 
-# IDE
+# IDE & Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+*.code-workspace
+
+# Operating System
+Thumbs.db
+Desktop.ini
+*.lnk
 
 # Logs
 *.log
 logs/
 *.log.*
+*.out
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+.hypothesis/
+nosetests.xml
+coverage.xml
+*.cover
+.cache
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Frontend build artifacts
+dist/
+dist-ssr/
+*.local
+.vite/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+out/
+.vercel/
+
+# Frontend env files
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Project specific
 simulation_logs/
@@ -54,8 +106,101 @@ demo_rl_models/
 *.pt
 *.ckpt
 
+# Experiment data (keep structure, ignore content)
+assignment_data/
+!assignment_data/.gitkeep
+!assignment_data/README.md
+!assignment_data/API_*.md
+!assignment_data/LAYOUT_*.md
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~.nib
+.pid
+*.pid
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Config files (keep examples)
 config.json
 config.*.json
 !config.example.json
 !config.default.json
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+ehthumbs.db
+ehthumbs_vista.db
+
+# Backup files
+*.backup
+*.old
+*_backup.*
+*_old.*
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Package files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Media files (large)
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+site/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
