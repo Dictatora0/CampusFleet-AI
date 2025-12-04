@@ -28,6 +28,53 @@ CampusFleet AI 是一个多智能体配送仿真系统，实现了以下四个�
 - **算法验证**：用于对比不同调度、路径规划和 RL 算法的效果
 - **应用场景**：以校园配送为背景的车队调度与配送仿真
 
+## ⚡ 快速开始
+
+### 5 分钟上手体验
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/Dictatora0/CampusFleet-AI.git
+cd CampusFleet-AI
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 运行GUI仿真（立即看到效果）
+python run_with_gui.py
+
+# 4. 尝试不同策略
+python run_with_gui.py --strategy mapf_cbs --cars 4  # MAPF协调
+python run_with_gui.py --strategy vrp_batching --cars 3  # VRP优化
+python run_with_gui.py --strategy ppo_learning --cars 3  # RL训练
+```
+
+### 30 分钟完整体验
+
+```bash
+# 运行RL对比实验（DQN vs Double DQN）
+python experiments/rl_comparison.py
+
+# 查看实验结果
+open experiments/results/dqn_comparison.png
+cat experiments/results/comparison_results.json
+
+# 启动Web界面（可选）
+# 终端1：后端
+cd web_backend && python main.py
+
+# 终端2：前端
+cd web_frontend && npm install && npm run dev
+```
+
+### 📚 详细文档
+
+- **实验指南**: [experiments/README_RIGOROUS_EXPERIMENT.md](experiments/README_RIGOROUS_EXPERIMENT.md)
+- **项目结构**: 见下方"项目结构"章节
+- **API 文档**: http://localhost:8001/docs（启动后端后访问）
+
+---
+
 ## 核心特性
 
 ### 多层次智能调度系统
@@ -205,8 +252,65 @@ python demo_rl_training.py
 
 #### RL 对比实验（Standard DQN vs Double DQN）
 
+项目提供了三种不同严谨程度的对比实验脚本：
+
+**1. 快速对比实验（推荐入门）** - 约 40 分钟
+
 ```bash
 python experiments/rl_comparison.py
+```
+
+- **单次运行**：每个算法训练 600 episodes
+- **优化参数 v3.0**：4 辆车、500 步、12 订单
+- **预期完成率**：40-60%
+- **生成 3 张图表**：
+  - `dqn_comparison.png` - 主对比图（2×2 网格，带移动平均）
+  - `cumulative_rewards.png` - 累积奖励曲线
+  - `final_performance.png` - 最后 100 轮性能分析
+- **适用场景**：原型验证、参数调优、课程作业
+
+**2. 严谨对比实验（论文标准）** - 约 3-4 小时
+
+```bash
+# 完整版：5次独立运行
+python experiments/rl_comparison_rigorous.py
+
+# 快速版：3次独立运行
+python experiments/rl_comparison_rigorous.py --runs 3
+```
+
+- **多次运行**：默认 5 次（可配置 3-10 次）
+- **更长训练**：每次 1000 episodes
+- **统计分析**：
+  - 均值 ± 标准差
+  - 95% 置信区间
+  - t 检验显著性
+- **专业报告**：
+  - JSON 格式数据
+  - 文本格式摘要
+  - 带误差棒的图表
+- **适用场景**：论文发表、学术研究、严谨验证
+
+**3. 恢复报告工具**（训练完成但报告失败时）
+
+```bash
+python experiments/recover_rigorous_report.py
+```
+
+- 从已完成的训练结果中重新生成报告
+- 无需重新训练
+- 用于修复 JSON 序列化错误等问题
+
+**查看结果**：
+
+```bash
+# 快速版结果
+open experiments/results/dqn_comparison.png
+cat experiments/results/comparison_results.json
+
+# 严谨版结果
+open experiments/results/rigorous/rigorous_comparison_plots.png
+cat experiments/results/rigorous/rigorous_comparison_report.txt
 ```
 
 #### Web 平台
@@ -726,6 +830,164 @@ tests/
     └── test_performance.py
 ```
 
+## 常见问题 (FAQ)
+
+### 安装问题
+
+**Q: 安装依赖时出现错误？**
+
+A: 建议使用虚拟环境：
+
+```bash
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+**Q: PyTorch 安装失败？**
+
+A: 根据你的系统选择合适版本：
+
+```bash
+# CPU版本
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# CUDA版本（GPU加速）
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+### 运行问题
+
+**Q: 运行实验时出现 `ModuleNotFoundError`？**
+
+A: 确保在项目根目录运行，或检查 `sys.path`：
+
+```bash
+cd "/Users/yourusername/Desktop/CampusFleet AI"
+python experiments/rl_comparison.py
+```
+
+**Q: 完成率很低（<20%）怎么办？**
+
+A: 调整环境参数提高完成率：
+
+```python
+env_config = {
+    "num_cars": 5,  # 增加车辆
+    "max_steps": 600,  # 增加步数
+    "max_orders_per_episode": 10,  # 减少订单
+}
+```
+
+**Q: 训练时间太长？**
+
+A: 减少训练轮数快速测试：
+
+```python
+training_config = {
+    "max_episodes": 200,  # 从600减少
+    "eval_interval": 20,
+}
+```
+
+### 实验问题
+
+**Q: 如何选择实验脚本？**
+
+A: 根据需求选择：
+
+- **快速验证**：`rl_comparison.py`（40 分钟）
+- **课程作业**：`rl_comparison.py`（单次运行）
+- **论文研究**：`rl_comparison_rigorous.py`（3-4 小时）
+
+**Q: 实验结果差异不明显？**
+
+A: 可能原因：
+
+1. 训练不充分：增加 `max_episodes`
+2. 任务过简单/过难：调整环境参数
+3. 随机性：使用严谨版多次运行取平均
+
+**Q: 图表为空或显示异常？**
+
+A: 检查：
+
+1. 训练是否正常完成
+2. 数据是否正确返回（检查 CSV/JSON 文件）
+3. 使用恢复工具重新生成：`python experiments/recover_rigorous_report.py`
+
+### 性能问题
+
+**Q: 如何加速训练？**
+
+A: 多种方法：
+
+1. 使用 GPU：确保安装 CUDA 版 PyTorch
+2. 减少评估频率：增大 `eval_interval`
+3. 并行训练：多进程运行不同算法
+4. 减少网格大小和订单数
+
+**Q: 内存占用过高？**
+
+A: 优化方案：
+
+```python
+# 减小batch size
+agent_config = {
+    "batch_size": 32,  # 默认64
+}
+
+# 减小replay buffer
+agent_config = {
+    "memory_size": 5000,  # 默认10000
+}
+```
+
+### 图表问题
+
+**Q: 如何生成论文级图表？**
+
+A: 使用优化版脚本，自动生成 300 DPI 高分辨率图表：
+
+```bash
+python experiments/rl_comparison.py  # 生成3张图表
+```
+
+**Q: 如何自定义图表？**
+
+A: 修改 `plot_comparison` 函数中的参数：
+
+```python
+# 调整图表大小
+fig, axes = plt.subplots(2, 2, figsize=(20, 15))
+
+# 调整移动平均窗口
+window = 100  # 更大窗口=更平滑
+
+# 调整分辨率
+plt.savefig("output.png", dpi=600)  # 更高分辨率
+```
+
+### Web 界面问题
+
+**Q: Web 界面无法访问？**
+
+A: 检查步骤：
+
+1. 后端是否正常启动（端口 8001）
+2. 前端是否正常运行（端口 3000）
+3. 防火墙是否阻止
+4. 查看浏览器控制台错误信息
+
+**Q: WebSocket 连接失败？**
+
+A: 确认：
+
+1. 后端 WebSocket 端点正常：`ws://localhost:8001/ws/simulation`
+2. 浏览器支持 WebSocket
+3. 检查后端日志
+
 ## CI/CD
 
 ### GitHub Actions 工作流
@@ -958,6 +1220,35 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 - Discussion: [讨论区](https://github.com/yourusername/CampusFleet-AI/discussions)
 
 ## 更新日志
+
+### v4.2.0 (2024-12-04) - 实验系统增强
+
+**RL 对比实验优化**：
+
+- ✨ 新增优化版对比实验（v3.0）：
+  - 参数优化：4 车、500 步、12 订单 → 40-60%完成率
+  - 可视化增强：3 张高分辨率图表（300 DPI）
+  - 移动平均平滑：50-ep、30-ep、20-ep、100-step
+  - 额外图表：累积奖励、最后 100 轮分析
+- ✨ 新增严谨对比实验脚本：
+  - 多次独立运行（3-10 次可配置）
+  - 完整统计分析（均值、标准差、95% CI）
+  - t 检验显著性检验
+  - 论文级专业报告
+- ✨ 新增恢复报告工具：
+  - 从已完成训练中重新生成报告
+  - 修复 JSON 序列化问题
+- 🐛 修复训练数据返回不完整问题
+- 🐛 修复完成率计算缺失问题
+- 🐛 修复图表 legend 为空的警告
+- 📝 完善实验文档（README_RIGOROUS_EXPERIMENT.md）
+
+**代码质量**：
+
+- 修复所有 isort 导入排序问题
+- 修复 black 代码格式问题
+- 修复 flake8 lint 警告
+- 更新 CI/CD 工作流配置
 
 ### v4.1.0 (2024-12-03) - 质量提升
 
