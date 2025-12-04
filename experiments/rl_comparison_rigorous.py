@@ -241,7 +241,7 @@ def compute_statistics(all_results):
         stats["significance_test"] = {
             "reward_t_statistic": float(t_stat),
             "reward_p_value": float(p_value),
-            "is_significant": p_value < 0.05,
+            "is_significant": bool(p_value < 0.05),  # 转换为Python bool
         }
     
     return stats

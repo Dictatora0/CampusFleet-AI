@@ -3,6 +3,7 @@
 用于当训练完成但报告生成失败时
 """
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def load_results_from_directory(base_dir):
-    """从目录中加载所有运行的结果"""
+    """从目录中加载所有运行的结果（从CSV文件）"""
     results_list = []
     base_path = Path(base_dir)
     
@@ -30,14 +31,29 @@ def load_results_from_directory(base_dir):
     print(f"找到 {len(run_dirs)} 个运行目录")
     
     for run_dir in run_dirs:
-        result_file = run_dir / "dqn_training_results.json"
-        if result_file.exists():
-            with open(result_file, "r", encoding="utf-8") as f:
-                results = json.load(f)
-                results_list.append(results)
-                print(f"  ✓ 加载: {run_dir.name}")
+        csv_file = run_dir / "dqn_training_metrics.csv"
+        if csv_file.exists():
+            # 从CSV读取详细训练数据
+            episode_rewards = []
+            completion_rates = []
+            avg_distances = []
+            
+            with open(csv_file, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    episode_rewards.append(float(row['reward']))
+                    completion_rates.append(float(row['completion_rate']))
+                    avg_distances.append(float(row['avg_distance']))
+            
+            results = {
+                "episode_rewards": episode_rewards,
+                "completion_rates": completion_rates,
+                "avg_distances": avg_distances,
+            }
+            results_list.append(results)
+            print(f"  ✓ 加载: {run_dir.name} ({len(episode_rewards)} episodes)")
         else:
-            print(f"  ⚠️  未找到结果文件: {run_dir.name}")
+            print(f"  ⚠️  未找到CSV文件: {run_dir.name}")
     
     return results_list
 
@@ -129,7 +145,7 @@ def compute_statistics(all_results):
         stats["significance_test"] = {
             "reward_t_statistic": float(t_stat),
             "reward_p_value": float(p_value),
-            "is_significant": p_value < 0.05,
+            "is_significant": bool(p_value < 0.05),  # 转换为Python bool
         }
     
     return stats
