@@ -5,7 +5,7 @@
 
 from agents.order_agent import OrderAgent
 from env.grid import GridEnvironment
-from env.pathfinding import AStar
+from env.pathfinding import PathFinding
 
 
 class TestGridPerformance:
@@ -98,36 +98,36 @@ class TestPathfindingPerformance:
     def test_astar_short_path(self, benchmark):
         """测试A*短路径规划性能"""
         env = GridEnvironment(size=15)
-        astar = AStar(env)
+        pathfinder = PathFinding(env.grid)
 
         start = (0, 0)
         goal = (5, 5)
 
-        result = benchmark(astar.search, start, goal)
+        result = benchmark(pathfinder.search, start, goal)
         assert result is not None
 
     def test_astar_long_path(self, benchmark):
         """测试A*长路径规划性能"""
         env = GridEnvironment(size=30)
-        astar = AStar(env)
+        pathfinder = PathFinding(env.grid)
 
         start = (0, 0)
         goal = (29, 29)
 
-        result = benchmark(astar.search, start, goal)
+        result = benchmark(pathfinder.search, start, goal)
         # 可能找不到路径，但测试性能
         assert result is not None or result is None
 
     def test_astar_complex_map(self, benchmark):
         """测试A*复杂地图性能"""
         env = GridEnvironment(size=50)
-        astar = AStar(env)
+        pathfinder = PathFinding(env.grid)
 
         start = env.get_random_road_position()
         goal = env.get_random_road_position()
 
         if start and goal:
-            _ = benchmark(astar.search, start, goal)
+            _ = benchmark(pathfinder.search, start, goal)
 
 
 class TestIntegrationPerformance:
