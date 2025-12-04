@@ -30,6 +30,7 @@ class WebSocketManager {
     this.reconnectInterval = 3000;
     this.heartbeatInterval = 30000;
     this.url = `ws://${location.host}/ws/simulation`;
+    this.isFirstConnection = true; // 标记是否首次连接
 
     // 如果是开发环境，使用固定端口
     if (process.env.NODE_ENV === "development") {
@@ -74,13 +75,16 @@ class WebSocketManager {
     // 启动心跳
     this.startHeartbeat();
 
-    // 显示连接成功通知
-    ElNotification({
-      title: "连接成功",
-      message: "WebSocket连接已建立",
-      type: "success",
-      duration: 2000,
-    });
+    // 只在首次连接时显示通知，避免重连时频繁弹窗
+    if (this.isFirstConnection) {
+      ElNotification({
+        title: "连接成功",
+        message: "WebSocket连接已建立",
+        type: "success",
+        duration: 2000,
+      });
+      this.isFirstConnection = false;
+    }
   }
 
   /**
