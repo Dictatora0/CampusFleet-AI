@@ -185,7 +185,7 @@ completion_rates = [
 ]
 
 plt.figure(figsize=(10, 6))
-plt.plot(steps, completion_rates, marker='o', linewidth=2, markersize=10, 
+plt.plot(steps, completion_rates, marker='o', linewidth=2, markersize=10,
          color='#3498db', label='Completion Rate')
 plt.xlabel('Simulation Steps', fontsize=13, fontweight='bold')
 plt.ylabel('Completion Rate (%)', fontsize=13, fontweight='bold')

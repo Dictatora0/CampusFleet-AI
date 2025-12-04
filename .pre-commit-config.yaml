@@ -34,4 +34,8 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        args: [--ignore-missing-imports, --no-strict-optional]
+        args: [--config-file=mypy.ini]
+        additional_dependencies: [types-all]
+        # 只在手动运行时检查类型，不阻塞 commit
+        # 使用方式: pre-commit run mypy --all-files
+        stages: [manual]

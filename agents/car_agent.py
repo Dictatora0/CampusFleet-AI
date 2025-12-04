@@ -52,7 +52,7 @@ class CarAgent:
         self.charging_station: Optional[Tuple[int, int]] = None  # 目标充电站
 
         # 任务相关 - 支持多订单
-        self.current_order_id: Optional[str] = None
+        self.current_order_id: Optional[int] = None
         self.pickup_point: Optional[Tuple[int, int]] = None
         self.delivery_point: Optional[Tuple[int, int]] = None
 
@@ -112,7 +112,7 @@ class CarAgent:
         # 重置MAPF协调状态
         self.clear_coordinated_path()
 
-    def assign_task(self, order_id: str, pickup: Tuple[int, int], delivery: Tuple[int, int]):
+    def assign_task(self, order_id: int, pickup: Tuple[int, int], delivery: Tuple[int, int]):
         """
         分配新任务（兼容原有接口）
         Args:

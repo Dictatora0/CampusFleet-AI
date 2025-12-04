@@ -55,6 +55,9 @@ class StateEncoder:
         Returns:
             状态向量 (state_dim,)
         """
+        if context is None:
+            return np.zeros(self.state_dim, dtype=np.float32)
+
         state = np.zeros(self.state_dim, dtype=np.float32)
         idx = 0
 
@@ -178,6 +181,9 @@ class RewardCalculator:
         Returns:
             奖励值
         """
+        if context is None:
+            return 0.0
+
         current_stats = context.get_statistics()
         reward = 0.0
 
@@ -225,6 +231,9 @@ class RewardCalculator:
 
     def _detect_potential_deadlock(self, context: SimulationContext) -> bool:
         """简单的死锁检测"""
+        if context is None:
+            return False
+
         # 如果有待处理订单但所有车都卡住不动，可能是死锁
         if len(context.order_agent.pending_orders) > 0:
             moving_cars = 0
@@ -239,11 +248,17 @@ class RewardCalculator:
 
     def reset_episode(self, context: SimulationContext):
         """重置episode统计"""
+        if context is None:
+            return
+
         self.prev_stats = context.get_statistics().copy()
         self.episode_start_stats = self.prev_stats.copy()
 
     def get_episode_reward_summary(self, context: SimulationContext) -> Dict[str, float]:
         """获取episode奖励总结"""
+        if context is None:
+            return {}
+
         current_stats = context.get_statistics()
         start_stats = self.episode_start_stats
 
@@ -306,7 +321,7 @@ class RLEnvironment(gym.Env):
         )
 
         # 仿真环境
-        self.context = None
+        self.context: Optional[SimulationContext] = None
         self.current_step = 0
         self.total_orders_generated = 0
 
@@ -367,6 +382,9 @@ class RLEnvironment(gym.Env):
             truncated: 是否截断
             info: 信息字典
         """
+        if self.context is None:
+            raise RuntimeError("Environment not initialized. Call reset() first.")
+
         # 执行RL调度决策
         assignments = self._action_to_assignments(action)
         self._apply_assignments(assignments)
@@ -411,6 +429,9 @@ class RLEnvironment(gym.Env):
         Returns:
             分配列表 [order_id_for_car0, order_id_for_car1, ...]
         """
+        if self.context is None:
+            return []
+
         assignments = []
         pending_orders = self.context.order_agent.get_pending_orders()
 
@@ -436,6 +457,9 @@ class RLEnvironment(gym.Env):
 
     def _apply_assignments(self, assignments: List[Optional[int]]):
         """应用车辆-订单分配"""
+        if self.context is None:
+            return
+
         for car_idx, order_id in enumerate(assignments):
             if order_id is not None and car_idx < len(self.context.cars):
                 car = self.context.cars[car_idx]
@@ -448,6 +472,9 @@ class RLEnvironment(gym.Env):
 
     def _generate_orders(self, num_orders: int = 1):
         """生成随机订单"""
+        if self.context is None:
+            return
+
         for _ in range(num_orders):
             if self.total_orders_generated < self.max_orders_per_episode:
                 self.context.add_random_order()
@@ -455,6 +482,9 @@ class RLEnvironment(gym.Env):
 
     def _check_terminated(self) -> bool:
         """检查是否满足终止条件"""
+        if self.context is None:
+            return True
+
         # 如果所有订单都完成了
         pending_orders = len(self.context.order_agent.pending_orders)
         all_cars_idle = all(car.is_idle() for car in self.context.cars)
