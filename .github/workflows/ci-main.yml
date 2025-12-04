@@ -37,13 +37,16 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-test.txt
 
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+
       - name: Run tests with strict mode
         run: |
           pytest tests/ -v --tb=short --strict-markers
 
       - name: Generate coverage report
         run: |
-          pytest tests/ --cov=core --cov-report=xml --cov-report=term --cov-fail-under=90
+          PYTHONPATH=${{ github.workspace }} pytest tests/ --cov=core --cov-report=xml --cov-report=term --cov-fail-under=90
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

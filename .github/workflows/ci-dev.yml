@@ -37,13 +37,16 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-test.txt
 
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+
       - name: Run tests
         run: |
           pytest tests/ -v --tb=short
 
       - name: Generate coverage report
         run: |
-          pytest tests/ --cov=core --cov-report=xml --cov-report=term
+          PYTHONPATH=${{ github.workspace }} pytest tests/ --cov=core --cov-report=xml --cov-report=term
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
