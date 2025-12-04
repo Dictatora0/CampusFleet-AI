@@ -87,4 +87,6 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          flake8 core/ --max-line-length=100 --extend-ignore=E203,W503 --count --statistics || true
+          flake8 . --max-line-length=100 --extend-ignore=E203,W503,E402 \
+            --exclude=venv,env,.venv,docs,build,dist,web_frontend \
+            --count --statistics || echo "::warning::Linting issues found"

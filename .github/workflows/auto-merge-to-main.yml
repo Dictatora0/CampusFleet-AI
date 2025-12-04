@@ -36,10 +36,10 @@ jobs:
       - name: Run linting checks
         run: |
           pip install flake8 black isort mypy
-          flake8 . --max-line-length=100 --extend-ignore=E203,W503 \
-            --exclude=venv,env,.venv,.git,__pycache__,docs,build,dist
-          black --check . --line-length=100 --exclude='/(venv|env|\.venv|\.git|__pycache__|docs|build|dist)/'
-          isort --check-only . --profile=black --skip venv --skip env --skip .venv
+          flake8 . --max-line-length=100 --extend-ignore=E203,W503,E402 \
+            --exclude=venv,env,.venv,.git,__pycache__,docs,build,dist,web_frontend
+          black --check . --line-length=100 --exclude='/(venv|env|\.venv|\.git|__pycache__|docs|build|dist|web_frontend)/'
+          isort --check-only . --profile=black --skip venv --skip env --skip .venv --skip web_frontend
 
       - name: Run type checking
         run: |

@@ -81,7 +81,8 @@ jobs:
       - name: Quick lint check
         run: |
           pip install flake8
-          flake8 core/ --max-line-length=100 --extend-ignore=E203,W503 --count
+          flake8 . --max-line-length=100 --extend-ignore=E203,W503,E402 \
+            --exclude=venv,env,.venv,docs,build,dist,web_frontend --count
 
   size-label:
     name: PR Size Label

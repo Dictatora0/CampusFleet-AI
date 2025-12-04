@@ -88,7 +88,9 @@ def plot_comparison(results_dqn, results_double_dqn):
     plt.rcParams["axes.unicode_minus"] = False
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle("Standard DQN vs Double DQN Performance Comparison", fontsize=16, fontweight="bold")
+    fig.suptitle(
+        "Standard DQN vs Double DQN Performance Comparison", fontsize=16, fontweight="bold"
+    )
 
     # 1. 奖励曲线
     ax = axes[0, 0]
