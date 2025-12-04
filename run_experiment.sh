@@ -351,10 +351,18 @@ echo -e "${GREEN}✅ 时刻 3 数据已保存${NC}"
 
 # 导出完整运行日志
 echo "导出完整运行日志（CSV 格式）..."
-curl -s "http://localhost:8001/api/analytics/export" | \
-  python3 -c "import sys, json; data=json.load(sys.stdin); print(data['data'])" \
-  > "$DATA_DIR/csv_exports/simulation_frames.csv"
-echo -e "${GREEN}✅ 运行日志已导出${NC}"
+EXPORT_RESPONSE=$(curl -s "http://localhost:8001/api/analytics/export")
+
+# 检查响应是否有效
+if echo "$EXPORT_RESPONSE" | python3 -c "import sys, json; data=json.load(sys.stdin); exit(0 if 'data' in data else 1)" 2>/dev/null; then
+    echo "$EXPORT_RESPONSE" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['data'])" \
+      > "$DATA_DIR/csv_exports/simulation_frames.csv"
+    echo -e "${GREEN}✅ 运行日志已导出${NC}"
+else
+    echo -e "${YELLOW}⚠️  CSV导出失败或无数据，跳过此步骤${NC}"
+    echo "$EXPORT_RESPONSE" > "$DATA_DIR/csv_exports/export_error.json"
+    echo -e "${YELLOW}   错误详情已保存到: export_error.json${NC}"
+fi
 
 # 步骤 6: 停止仿真
 echo -e "\n${GREEN}[步骤 6/7] 停止仿真${NC}"

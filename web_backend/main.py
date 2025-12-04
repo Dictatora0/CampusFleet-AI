@@ -379,18 +379,18 @@ async def get_strategies():
 
 @app.get("/api/analytics/export")
 async def export_analytics():
-    """导出分析数据"""
+    """导出分析数据（返回CSV字符串）"""
     if not sim_manager.data_logger:
         raise HTTPException(status_code=400, detail="数据记录未启用")
 
     try:
-        # 导出CSV数据
-        csv_data = sim_manager.data_logger.export_to_csv()
+        # 导出CSV数据为字符串
+        csv_data = sim_manager.data_logger.export_to_csv_string()
         return {
             "status": "success",
             "format": "csv",
             "data": csv_data,
-            "record_count": len(sim_manager.data_logger.frame_records),
+            "record_count": len(sim_manager.data_logger.frame_data),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"数据导出失败: {str(e)}")

@@ -176,6 +176,22 @@ class DataLogger:
 
         return exported_files
 
+    def export_to_csv_string(self) -> str:
+        """
+        导出帧数据为CSV字符串（用于API响应）
+        Returns:
+            CSV格式的字符串
+        """
+        if not self.frame_data:
+            return ""
+        
+        import io
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=self.frame_data[0].keys())
+        writer.writeheader()
+        writer.writerows(self.frame_data)
+        return output.getvalue()
+    
     def clear(self):
         """清空所有记录的数据"""
         self.frame_data.clear()
