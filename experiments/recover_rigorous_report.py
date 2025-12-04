@@ -1,12 +1,6 @@
 """
-严谨的强化学习算法对比实验
-对比标准 DQN 与 Double DQN，进行多次独立运行并统计分析
-
-实验设置:
-- 运行次数: 5 次独立实验
-- 训练轮数: 1000 episodes (完全收敛)
-- 统计指标: 均值、标准差、置信区间
-- 输出: 详细对比报告 + 专业图表
+从已完成的严谨实验结果中恢复报告
+用于当训练完成但报告生成失败时
 """
 
 import json
@@ -20,129 +14,36 @@ import numpy as np
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from rl_agents.training_manager import TrainingManager
 
-
-def run_single_experiment(algorithm_name, use_double_dqn, run_id, base_save_dir):
-    """运行单次实验"""
-    print(f"\n{'='*80}")
-    print(f"运行 {algorithm_name} - 第 {run_id}/5 次")
-    print(f"{'='*80}")
+def load_results_from_directory(base_dir):
+    """从目录中加载所有运行的结果"""
+    results_list = []
+    base_path = Path(base_dir)
     
-    # 环境配置（优化版）
-    env_config = {
-        "grid_size": 10,
-        "num_cars": 3,
-        "max_steps": 350,
-        "max_orders_per_episode": 10,
-    }
+    if not base_path.exists():
+        print(f"⚠️  目录不存在: {base_dir}")
+        return results_list
     
-    # 训练配置（严谨版）
-    training_config = {
-        "max_episodes": 1000,  # 完全收敛
-        "eval_interval": 50,   # 减少评估频率
-        "save_interval": 200,
-        "early_stop_threshold": 0.6,
-        "patience": 400,  # 更大的耐心值
-    }
+    # 查找所有 run_* 目录
+    run_dirs = sorted([d for d in base_path.iterdir() if d.is_dir() and d.name.startswith("run_")])
     
-    # Agent 配置
-    agent_config = {
-        "use_double_dqn": use_double_dqn,
-    }
+    print(f"找到 {len(run_dirs)} 个运行目录")
     
-    # 保存目录
-    save_dir = f"{base_save_dir}/run_{run_id}"
+    for run_dir in run_dirs:
+        result_file = run_dir / "dqn_training_results.json"
+        if result_file.exists():
+            with open(result_file, "r", encoding="utf-8") as f:
+                results = json.load(f)
+                results_list.append(results)
+                print(f"  ✓ 加载: {run_dir.name}")
+        else:
+            print(f"  ⚠️  未找到结果文件: {run_dir.name}")
     
-    # 创建训练器
-    trainer = TrainingManager(
-        agent_type="DQN",
-        environment_config=env_config,
-        training_config=training_config,
-        agent_config=agent_config,
-        save_dir=save_dir,
-    )
-    
-    # 训练
-    results = trainer.train_agent()
-    
-    return results, env_config, training_config
-
-
-def run_rigorous_comparison(num_runs=5):
-    """运行严谨的对比实验"""
-    
-    start_time = datetime.now()
-    
-    print("=" * 80)
-    print("严谨的 RL 算法对比实验")
-    print(f"运行次数: {num_runs} 次独立实验")
-    print(f"训练轮数: 1000 episodes/run")
-    print(f"开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 80)
-    
-    # 存储所有运行的结果
-    all_results = {
-        "standard_dqn": [],
-        "double_dqn": [],
-    }
-    
-    # 运行标准 DQN（多次）
-    print(f"\n{'#'*80}")
-    print(f"阶段 1/2: 训练标准 DQN ({num_runs} 次)")
-    print(f"{'#'*80}")
-    
-    for run_id in range(1, num_runs + 1):
-        results, env_config, training_config = run_single_experiment(
-            algorithm_name="Standard DQN",
-            use_double_dqn=False,
-            run_id=run_id,
-            base_save_dir="experiments/results/rigorous/standard_dqn"
-        )
-        all_results["standard_dqn"].append(results)
-    
-    # 运行 Double DQN（多次）
-    print(f"\n{'#'*80}")
-    print(f"阶段 2/2: 训练 Double DQN ({num_runs} 次)")
-    print(f"{'#'*80}")
-    
-    for run_id in range(1, num_runs + 1):
-        results, _, _ = run_single_experiment(
-            algorithm_name="Double DQN",
-            use_double_dqn=True,
-            run_id=run_id,
-            base_save_dir="experiments/results/rigorous/double_dqn"
-        )
-        all_results["double_dqn"].append(results)
-    
-    # 统计分析
-    print(f"\n{'='*80}")
-    print("统计分析中...")
-    print(f"{'='*80}")
-    
-    stats = compute_statistics(all_results)
-    
-    # 生成报告和图表
-    output_dir = Path("experiments/results/rigorous")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    save_detailed_report(stats, env_config, training_config, output_dir, num_runs)
-    plot_comparison_with_uncertainty(all_results, stats, output_dir)
-    
-    end_time = datetime.now()
-    duration = (end_time - start_time).total_seconds() / 3600
-    
-    print(f"\n{'='*80}")
-    print(f"实验完成!")
-    print(f"总用时: {duration:.2f} 小时")
-    print(f"结果保存在: {output_dir}")
-    print(f"{'='*80}")
-    
-    return stats
+    return results_list
 
 
 def compute_statistics(all_results):
-    """计算统计指标（均值、标准差、置信区间）"""
+    """计算统计指标（与原脚本相同）"""
     
     def get_final_stats(results_list):
         """从多次运行中提取最终统计"""
@@ -177,24 +78,13 @@ def compute_statistics(all_results):
     dqn_stats = get_final_stats(all_results["standard_dqn"])
     ddqn_stats = get_final_stats(all_results["double_dqn"])
     
-    # 计算均值、标准差、95%置信区间
-    def compute_ci(data):
-        """计算95%置信区间"""
-        mean = np.mean(data)
-        std = np.std(data, ddof=1)  # 样本标准差
-        n = len(data)
-        # t分布的95%置信区间（小样本）
-        from scipy import stats as scipy_stats
-        ci = scipy_stats.t.interval(0.95, n-1, loc=mean, scale=std/np.sqrt(n))
-        return mean, std, ci
-    
-    # 尝试导入scipy，如果没有则使用简化版本
+    # 尝试导入scipy
     try:
         from scipy import stats as scipy_stats
         has_scipy = True
     except ImportError:
         has_scipy = False
-        print("⚠️  scipy未安装，使用简化版置信区间（正态分布近似）")
+        print("⚠️  scipy未安装，使用简化版置信区间")
     
     def compute_metrics(data):
         mean = np.mean(data)
@@ -204,7 +94,6 @@ def compute_statistics(all_results):
         if has_scipy and n > 1:
             ci = scipy_stats.t.interval(0.95, n-1, loc=mean, scale=std/np.sqrt(n))
         else:
-            # 简化版本：使用1.96*SE
             margin = 1.96 * std / np.sqrt(n) if n > 0 else 0
             ci = (mean - margin, mean + margin)
         
@@ -234,9 +123,8 @@ def compute_statistics(all_results):
         }
     }
     
-    # 计算统计显著性（t检验）
+    # 统计显著性
     if has_scipy:
-        # Reward差异的t检验
         t_stat, p_value = scipy_stats.ttest_ind(dqn_stats["rewards"], ddqn_stats["rewards"])
         stats["significance_test"] = {
             "reward_t_statistic": float(t_stat),
@@ -245,43 +133,6 @@ def compute_statistics(all_results):
         }
     
     return stats
-
-
-def save_detailed_report(stats, env_config, training_config, output_dir, num_runs):
-    """保存详细报告"""
-    
-    # 创建不包含 raw_data 的统计数据副本（用于 JSON 序列化）
-    stats_for_json = {
-        "standard_dqn": stats["standard_dqn"],
-        "double_dqn": stats["double_dqn"],
-    }
-    
-    # 如果有显著性检验，也包含进去
-    if "significance_test" in stats:
-        stats_for_json["significance_test"] = stats["significance_test"]
-    
-    # JSON格式保存
-    report_data = {
-        "experiment": "Rigorous DQN vs Double DQN Comparison",
-        "num_runs": num_runs,
-        "environment_config": env_config,
-        "training_config": training_config,
-        "statistics": stats_for_json,
-        "timestamp": datetime.now().isoformat(),
-    }
-    
-    with open(output_dir / "rigorous_comparison_report.json", "w", encoding="utf-8") as f:
-        json.dump(report_data, f, indent=2, ensure_ascii=False)
-    
-    # 文本格式报告
-    report_text = generate_text_report(stats, num_runs)
-    with open(output_dir / "rigorous_comparison_report.txt", "w", encoding="utf-8") as f:
-        f.write(report_text)
-    
-    print("\n" + report_text)
-    print(f"\n✓ 详细报告已保存:")
-    print(f"  - {output_dir / 'rigorous_comparison_report.json'}")
-    print(f"  - {output_dir / 'rigorous_comparison_report.txt'}")
 
 
 def generate_text_report(stats, num_runs):
@@ -349,7 +200,7 @@ def generate_text_report(stats, num_runs):
 
 
 def plot_comparison_with_uncertainty(all_results, stats, output_dir):
-    """绘制带不确定性的对比图"""
+    """绘制对比图（简化版）"""
     
     plt.rcParams["font.sans-serif"] = ["DejaVu Sans", "Arial"]
     plt.rcParams["axes.unicode_minus"] = False
@@ -358,75 +209,8 @@ def plot_comparison_with_uncertainty(all_results, stats, output_dir):
     fig.suptitle("Rigorous Comparison: Standard DQN vs Double DQN\n(Mean ± Std, N=5 runs)", 
                  fontsize=16, fontweight="bold")
     
-    # 1. 奖励曲线（多次运行）
+    # 1. Bar plot with error bars
     ax = axes[0, 0]
-    plot_multi_run_curves(ax, all_results["standard_dqn"], "Standard DQN", "blue", "episode_rewards")
-    plot_multi_run_curves(ax, all_results["double_dqn"], "Double DQN", "red", "episode_rewards")
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Total Reward")
-    ax.set_title("Episode Rewards (Mean ± Std)")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    
-    # 2. 完成率曲线
-    ax = axes[0, 1]
-    plot_multi_run_curves(ax, all_results["standard_dqn"], "Standard DQN", "blue", "completion_rates")
-    plot_multi_run_curves(ax, all_results["double_dqn"], "Double DQN", "red", "completion_rates")
-    ax.set_xlabel("Episode")
-    ax.set_ylabel("Completion Rate (%)")
-    ax.set_title("Order Completion Rate (Mean ± Std)")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    ax.set_ylim([0, 105])
-    
-    # 3. Bar plot with error bars
-    ax = axes[1, 0]
-    plot_bar_comparison(ax, stats)
-    
-    # 4. Box plot
-    ax = axes[1, 1]
-    plot_box_comparison(ax, stats)
-    
-    plt.tight_layout()
-    plt.savefig(output_dir / "rigorous_comparison_plots.png", dpi=300, bbox_inches="tight")
-    print(f"对比图表已保存: {output_dir / 'rigorous_comparison_plots.png'}")
-    plt.close()
-
-
-def plot_multi_run_curves(ax, results_list, label, color, metric_key):
-    """绘制多次运行的曲线（均值±标准差）"""
-    # 收集所有运行的数据
-    all_curves = []
-    for results in results_list:
-        if metric_key in results and results[metric_key]:
-            all_curves.append(results[metric_key])
-    
-    if not all_curves:
-        return
-    
-    # 找到最小长度
-    min_len = min(len(curve) for curve in all_curves)
-    all_curves = [curve[:min_len] for curve in all_curves]
-    
-    # 计算均值和标准差
-    all_curves = np.array(all_curves)
-    mean_curve = np.mean(all_curves, axis=0)
-    std_curve = np.std(all_curves, axis=0)
-    
-    episodes = range(len(mean_curve))
-    
-    # 绘制均值
-    ax.plot(episodes, mean_curve, label=label, color=color, linewidth=2)
-    
-    # 绘制标准差阴影
-    ax.fill_between(episodes, 
-                     mean_curve - std_curve, 
-                     mean_curve + std_curve, 
-                     color=color, alpha=0.2)
-
-
-def plot_bar_comparison(ax, stats):
-    """绘制bar图对比（带误差棒）"""
     metrics = ['final_reward', 'final_completion_rate', 'final_distance']
     labels = ['Avg Reward', 'Completion Rate (%)', 'Avg Distance']
     
@@ -439,7 +223,6 @@ def plot_bar_comparison(ax, stats):
     ddqn_means = [stats['double_dqn'][m]['mean'] for m in metrics]
     ddqn_stds = [stats['double_dqn'][m]['std'] for m in metrics]
     
-    # 归一化显示（避免scale差异）
     max_vals = [max(dqn_means[i], ddqn_means[i]) for i in range(len(metrics))]
     dqn_normalized = [dqn_means[i] / max_vals[i] * 100 for i in range(len(metrics))]
     ddqn_normalized = [ddqn_means[i] / max_vals[i] * 100 for i in range(len(metrics))]
@@ -457,21 +240,17 @@ def plot_bar_comparison(ax, stats):
     ax.set_xticklabels(labels)
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
-
-
-def plot_box_comparison(ax, stats):
-    """绘制box plot对比"""
+    
+    # 2. Box plot
+    ax = axes[0, 1]
     dqn_rewards = stats['raw_data']['standard_dqn']['rewards']
     ddqn_rewards = stats['raw_data']['double_dqn']['rewards']
     
     box_data = [dqn_rewards, ddqn_rewards]
-    positions = [1, 2]
-    
-    bp = ax.boxplot(box_data, positions=positions, widths=0.6,
+    bp = ax.boxplot(box_data, positions=[1, 2], widths=0.6,
                     patch_artist=True, showmeans=True,
                     meanprops=dict(marker='D', markerfacecolor='yellow', markersize=8))
     
-    # 设置颜色
     colors = ['lightblue', 'lightcoral']
     for patch, color in zip(bp['boxes'], colors):
         patch.set_facecolor(color)
@@ -480,13 +259,92 @@ def plot_box_comparison(ax, stats):
     ax.set_ylabel('Final Avg Reward (last 100 episodes)')
     ax.set_title('Reward Distribution Comparison (N=5)')
     ax.grid(True, alpha=0.3, axis='y')
+    
+    # 3-4. 留空或显示其他指标
+    for idx in [(1, 0), (1, 1)]:
+        axes[idx].text(0.5, 0.5, 'See individual run files\nfor detailed curves', 
+                       ha='center', va='center', fontsize=14, color='gray')
+        axes[idx].axis('off')
+    
+    plt.tight_layout()
+    plt.savefig(output_dir / "rigorous_comparison_plots.png", dpi=300, bbox_inches="tight")
+    print(f"✓ 对比图表已保存: {output_dir / 'rigorous_comparison_plots.png'}")
+    plt.close()
+
+
+def main():
+    """主函数"""
+    print("=" * 80)
+    print("从已完成的训练结果中恢复报告")
+    print("=" * 80)
+    
+    base_dir = Path("experiments/results/rigorous")
+    
+    # 加载结果
+    print("\n加载 Standard DQN 结果...")
+    dqn_results = load_results_from_directory(base_dir / "standard_dqn")
+    
+    print("\n加载 Double DQN 结果...")
+    ddqn_results = load_results_from_directory(base_dir / "double_dqn")
+    
+    if not dqn_results or not ddqn_results:
+        print("\n❌ 未找到足够的结果文件！")
+        print("请确保以下目录存在且包含训练结果:")
+        print(f"  - {base_dir / 'standard_dqn'}")
+        print(f"  - {base_dir / 'double_dqn'}")
+        return
+    
+    print(f"\n总共找到: {len(dqn_results)} 个 Standard DQN, {len(ddqn_results)} 个 Double DQN")
+    
+    all_results = {
+        "standard_dqn": dqn_results,
+        "double_dqn": ddqn_results,
+    }
+    
+    # 计算统计
+    print("\n计算统计指标...")
+    stats = compute_statistics(all_results)
+    
+    # 生成报告
+    print("\n生成报告...")
+    output_dir = base_dir
+    num_runs = len(dqn_results)
+    
+    # 保存 JSON（不包含 raw_data）
+    stats_for_json = {
+        "standard_dqn": stats["standard_dqn"],
+        "double_dqn": stats["double_dqn"],
+    }
+    if "significance_test" in stats:
+        stats_for_json["significance_test"] = stats["significance_test"]
+    
+    report_data = {
+        "experiment": "Rigorous DQN vs Double DQN Comparison",
+        "num_runs": num_runs,
+        "statistics": stats_for_json,
+        "timestamp": datetime.now().isoformat(),
+        "note": "Report recovered from completed training results"
+    }
+    
+    with open(output_dir / "rigorous_comparison_report.json", "w", encoding="utf-8") as f:
+        json.dump(report_data, f, indent=2, ensure_ascii=False)
+    print(f"✓ JSON报告已保存: {output_dir / 'rigorous_comparison_report.json'}")
+    
+    # 保存文本报告
+    report_text = generate_text_report(stats, num_runs)
+    with open(output_dir / "rigorous_comparison_report.txt", "w", encoding="utf-8") as f:
+        f.write(report_text)
+    print(f"✓ 文本报告已保存: {output_dir / 'rigorous_comparison_report.txt'}")
+    
+    # 绘制图表
+    print("\n生成图表...")
+    plot_comparison_with_uncertainty(all_results, stats, output_dir)
+    
+    print("\n" + "=" * 80)
+    print(report_text)
+    print("=" * 80)
+    print(f"\n✅ 报告恢复完成！所有文件保存在: {output_dir}")
 
 
 if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="严谨的RL算法对比实验")
-    parser.add_argument("--runs", type=int, default=5, help="独立运行次数 (默认: 5)")
-    args = parser.parse_args()
-    
-    stats = run_rigorous_comparison(num_runs=args.runs)
+    main()
