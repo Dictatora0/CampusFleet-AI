@@ -44,5 +44,11 @@ trainer2 = TrainingManager(
 results2 = trainer2.train_agent()
 
 print("\n✅ 测试通过！代码运行正常")
-print(f"标准 DQN 最终奖励: {results1['episode_rewards'][-1] if results1.get('episode_rewards') else 'N/A'}")
-print(f"Double DQN 最终奖励: {results2['episode_rewards'][-1] if results2.get('episode_rewards') else 'N/A'}")
+dqn_reward = (
+    results1['episode_rewards'][-1] if results1.get('episode_rewards') else 'N/A'
+)
+ddqn_reward = (
+    results2['episode_rewards'][-1] if results2.get('episode_rewards') else 'N/A'
+)
+print(f"标准 DQN 最终奖励: {dqn_reward}")
+print(f"Double DQN 最终奖励: {ddqn_reward}")

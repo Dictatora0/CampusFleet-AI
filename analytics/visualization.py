@@ -3,7 +3,6 @@
 """
 
 from pathlib import Path
-from typing import List, Optional
 
 import matplotlib
 import matplotlib.pyplot as plt

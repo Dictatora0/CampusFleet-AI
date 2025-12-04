@@ -171,7 +171,7 @@ def demo_integrated():
 
         logger.info("开始仿真...")
         for step in range(10):
-            success = run_simulation_step()
+            _ = run_simulation_step()
             if step % 3 == 0:
                 logger.info(f"步骤 {step}: 运行中")
 

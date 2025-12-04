@@ -2,11 +2,9 @@
 """
 MAPF演示 - 简化版本
 """
-import time
 
 from agents import SchedulingStrategy
 from core import SimulationContext
-from visualization import PygameViewer
 
 
 def simple_mapf_demo():
@@ -49,7 +47,7 @@ def simple_mapf_demo():
 
     # 最终统计
     final_stats = context.get_statistics()
-    print(f"📊 最终结果:")
+    print("📊 最终结果:")
     print(f"  - 完成订单: {final_stats['total_completed_orders']}")
     print(f"  - 总距离: {final_stats['total_distance']}")
     print(f"  - 平均效率: {final_stats['avg_distance_per_order']:.2f}")
@@ -85,7 +83,7 @@ def compare_strategies():
                 print(f"  ✅ {step}步内完成所有订单")
                 break
         else:
-            print(f"  ⏰ 40步内未完全完成")
+            print("  ⏰ 40步内未完全完成")
 
         stats = context.get_statistics()
         print(f"  📊 完成: {stats['total_completed_orders']} 订单")

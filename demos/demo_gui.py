@@ -113,7 +113,7 @@ def main():
         print("\n👋 关闭窗口...")
         try:
             viewer.close()
-        except:
+        except Exception:
             pass
         print("✅ 程序结束")
 

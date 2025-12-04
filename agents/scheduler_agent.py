@@ -560,7 +560,7 @@ class SchedulerAgent:
 
         except Exception as e:
             print(f"❌ RL调度失败: {e}")
-            print(f"   回退到贪心策略")
+            print("   回退到贪心策略")
 
             # 记录失败信息
             self.assignment_history.append(
@@ -617,4 +617,4 @@ def call_llm_for_scheduling(context: dict) -> str:
     """
     # 这是一个占位函数，可以在未来连接到实际的LLM服务
     # 例如：根据历史数据、交通状况等，让LLM给出最优调度建议
-    return f"[LLM Scheduling Suggestion Placeholder]"
+    return "[LLM Scheduling Suggestion Placeholder]"

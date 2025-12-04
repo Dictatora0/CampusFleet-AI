@@ -50,7 +50,7 @@ def test_vrp_functionality():
 
     # 统计数据
     last_completed = 0
-    vrp_assignments = 0
+    _ = 0
 
     try:
         while viewer.running and step < max_steps:

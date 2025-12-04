@@ -5,9 +5,7 @@
 import os
 
 from agents import CarAgent, SchedulingStrategy
-from analytics import DataLogger, DataVisualizer
 from core import SimulationContext
-from env import GridEnvironment, PathFinding
 
 
 def test_data_logging():
@@ -142,7 +140,6 @@ def test_pygame_visualization():
     print("=" * 60)
 
     try:
-        from visualization import PygameViewer
 
         print(" Pygame模块导入成功")
         print("警告:  跳过实际渲染测试（需要图形界面）")
@@ -177,7 +174,7 @@ def test_scheduler_with_battery():
         for car_id, order_id, _, _ in assignments:
             assert car_id != 0, "低电量车辆不应该被分配任务"
 
-        print(f" 调度器正确排除低电量车辆")
+        print(" 调度器正确排除低电量车辆")
         print(f" 分配了 {len(assignments)} 个任务")
 
     print(" 调度器电量考虑测试通过！")

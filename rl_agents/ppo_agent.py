@@ -359,9 +359,9 @@ class PPOAgent:
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # 转换为张量
-        states = torch.FloatTensor(self.memory.states).to(self.device)
-        actions = torch.LongTensor(self.memory.actions).to(self.device)
-        old_log_probs = torch.FloatTensor(self.memory.log_probs).to(self.device)
+        _ = torch.FloatTensor(self.memory.states).to(self.device)
+        _ = torch.LongTensor(self.memory.actions).to(self.device)
+        _ = torch.FloatTensor(self.memory.log_probs).to(self.device)
         returns = torch.FloatTensor(returns).to(self.device)
         advantages = torch.FloatTensor(advantages).to(self.device)
 

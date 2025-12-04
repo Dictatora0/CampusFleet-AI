@@ -3,7 +3,6 @@
 对比标准 DQN 与 Double DQN 在多智能体调度任务中的表现
 """
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -222,17 +221,17 @@ def save_comparison_results(results_dqn, results_double_dqn, env_config, trainin
     print("\n" + "=" * 60)
     print("实验结果摘要")
     print("=" * 60)
-    print(f"标准 DQN:")
+    print("标准 DQN:")
     print(f"  平均奖励: {dqn_stats.get('final_avg_reward', 0):.2f}")
     print(f"  完成率: {dqn_stats.get('final_avg_completion_rate', 0):.1f}%")
     print(f"  平均距离: {dqn_stats.get('final_avg_distance', 0):.2f}")
-    print(f"\nDouble DQN:")
+    print("\nDouble DQN:")
     print(f"  平均奖励: {ddqn_stats.get('final_avg_reward', 0):.2f}")
     print(f"  完成率: {ddqn_stats.get('final_avg_completion_rate', 0):.1f}%")
     print(f"  平均距离: {ddqn_stats.get('final_avg_distance', 0):.2f}")
 
     if "reward" in comparison_data["improvement"]:
-        print(f"\n改进幅度:")
+        print("\n改进幅度:")
         print(f"  奖励提升: {comparison_data['improvement']['reward']:.1f}%")
     if "distance" in comparison_data["improvement"]:
         print(f"  距离优化: {comparison_data['improvement']['distance']:.1f}%")

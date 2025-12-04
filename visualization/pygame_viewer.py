@@ -2,6 +2,8 @@
 Pygame可视化界面 - 提供图形化的仿真界面
 """
 
+import sys
+
 try:
     import pygame
     import pygame.gfxdraw
@@ -11,7 +13,6 @@ except ImportError as e:
     print(f"Pygame未安装：{e}")
     PYGAME_AVAILABLE = False
 
-from typing import Dict, List, Tuple
 
 
 class PygameViewer:
@@ -127,7 +128,7 @@ class PygameViewer:
                 pass
 
         # 如果没有找到中文字体，使用默认字体
-        print(f"⚠️  警告: 未找到合适的中文字体，使用默认字体")
+        print("警告: 未找到合适的中文字体，使用默认字体")
         return pygame.font.Font(None, size)
 
     def handle_events(self) -> bool:

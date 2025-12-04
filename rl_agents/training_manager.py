@@ -6,12 +6,10 @@
 import json
 import os
 import sys
-import threading
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -21,7 +19,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from .dqn_agent import DQNAgent
 from .ppo_agent import PPOAgent
 from .rl_environment import RLEnvironment
-from .rl_scheduler import RLScheduler
 
 
 class EvaluationMetrics:
@@ -539,10 +536,7 @@ def train_rl_example():
 if __name__ == "__main__":
     # 安装依赖提示
     try:
-        import gymnasium
-        import matplotlib
         import pandas
-        import torch
     except ImportError as e:
         print(f" 缺少依赖包: {e}")
         print("请安装: pip install torch gymnasium pandas matplotlib")

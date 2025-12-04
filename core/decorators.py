@@ -4,7 +4,6 @@
 
 import functools
 import time
-from typing import Any, Callable
 
 from .logger import get_logger
 

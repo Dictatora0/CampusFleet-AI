@@ -446,7 +446,7 @@ def train_dqn_example():
             agent.store_experience(state, action, reward, next_state, done)
 
             # 训练
-            loss = agent.train()
+            _ = agent.train()
 
             total_reward += reward
             state = next_state

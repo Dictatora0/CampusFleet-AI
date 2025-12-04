@@ -5,7 +5,6 @@
 
 import copy
 import heapq
-from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple

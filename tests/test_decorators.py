@@ -156,7 +156,7 @@ class TestMonitorPerformanceDecorator:
 
     def test_monitor_basic(self):
         """测试基本监控"""
-        monitor = PerformanceMonitor()
+        _ = PerformanceMonitor()
 
         @monitor_performance("test_metric")
         def monitored_function():

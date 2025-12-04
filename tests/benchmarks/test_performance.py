@@ -3,9 +3,7 @@
 需要安装: pip install pytest-benchmark
 """
 
-import pytest
 
-from agents.car_agent import CarAgent
 from agents.order_agent import OrderAgent
 from env.grid import GridEnvironment
 from env.pathfinding import AStar
@@ -130,7 +128,7 @@ class TestPathfindingPerformance:
         goal = env.get_random_road_position()
 
         if start and goal:
-            result = benchmark(astar.search, start, goal)
+            _ = benchmark(astar.search, start, goal)
 
 
 class TestIntegrationPerformance:

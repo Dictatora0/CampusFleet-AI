@@ -15,7 +15,6 @@ print("=" * 60)
 # 测试 1: 日志系统
 print("\n1. 测试日志系统...")
 try:
-    from core.logger import LoggerManager, get_logger
 
     logger = get_logger("test")
     logger.info("日志系统工作正常")

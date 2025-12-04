@@ -275,7 +275,7 @@ class TestCarAgentCollisionHandling:
         other_cars = {(1, 0)}
 
         # car的ID是10，优先级低于5，应该尝试避让
-        result = car.handle_collision(other_car_id, pathfinder, other_cars)
+        _ = car.handle_collision(other_car_id, pathfinder, other_cars)
         # 结果取决于是否能成功规划避让路径
 
 

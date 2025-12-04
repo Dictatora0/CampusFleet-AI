@@ -7,7 +7,6 @@ import os
 import sys
 import time
 
-import matplotlib.pyplot as plt
 
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(__file__))
@@ -50,7 +49,7 @@ def quick_rl_training_demo():
 
     training_time = time.time() - start_time
 
-    print(f"\n 训练完成!")
+    print("\n 训练完成!")
     print(f"用时: {training_time:.1f}秒")
     print(f"最佳性能: {results['best_performance']:.3f}")
     print(f"最终成功率: {results['final_stats']['success_rate']:.3f}")
@@ -119,7 +118,7 @@ def compare_rl_vs_traditional():
             results[name] = {"error": str(e)}
 
     # 显示对比结果
-    print(f"\n📈 对比总结:")
+    print("\n📈 对比总结:")
     print("-" * 60)
     print(f"{'策略':<12} {'订单':<6} {'距离':<8} {'平均':<8} {'步数':<6}")
     print("-" * 60)
@@ -143,7 +142,7 @@ def demo_rl_environment():
     # 创建RL环境
     env = RLEnvironment(grid_size=6, num_cars=2, max_steps=20, max_orders_per_episode=6)
 
-    print(f" RL环境创建成功")
+    print(" RL环境创建成功")
     print(f"状态维度: {env.observation_space.shape[0]}")
     print(f"动作空间: {env.action_space}")
 
@@ -151,7 +150,7 @@ def demo_rl_environment():
     obs, info = env.reset()
     total_reward = 0
 
-    print(f"\n🎮 运行episode演示:")
+    print("\n🎮 运行episode演示:")
     for step in range(10):
         # 随机动作
         action = env.action_space.sample()
@@ -169,7 +168,7 @@ def demo_rl_environment():
 
     env.close()
 
-    print(f"\n Episode总结:")
+    print("\n Episode总结:")
     print(f"总奖励: {total_reward:.2f}")
     print(f"步数: {step + 1}")
     print(f"平均奖励: {total_reward / (step + 1):.2f}")
@@ -182,10 +181,8 @@ def main():
 
     try:
         # 检查依赖
-        import gymnasium
-        import torch
 
-        print(f" 依赖检查通过")
+        print(" 依赖检查通过")
 
         # 1. 演示RL环境
         demo_rl_environment()
@@ -194,7 +191,7 @@ def main():
         trainer, train_results = quick_rl_training_demo()
 
         # 3. 性能对比
-        comparison_results = compare_rl_vs_traditional()
+        _ = compare_rl_vs_traditional()
 
         # 4. 清理临时文件
         import shutil
@@ -202,8 +199,8 @@ def main():
         if os.path.exists("demo_rl_models"):
             shutil.rmtree("demo_rl_models")
 
-        print(f"\n 演示完成!")
-        print(f" CampusFleet AI强化学习系统运行正常!")
+        print("\n 演示完成!")
+        print(" CampusFleet AI强化学习系统运行正常!")
 
         return True
 
@@ -229,10 +226,10 @@ if __name__ == "__main__":
     success = main()
 
     if success:
-        print(f"\n 下一步:")
-        print(f"1. 长期训练: python -m rl_agents.training_manager")
-        print(f"2. Web界面集成: 启动FastAPI后端")
-        print(f"3. 生产部署: 使用训练好的模型")
+        print("\n 下一步:")
+        print("1. 长期训练: python -m rl_agents.training_manager")
+        print("2. Web界面集成: 启动FastAPI后端")
+        print("3. 生产部署: 使用训练好的模型")
 
-    print(f"\n👋 演示结束")
+    print("\n👋 演示结束")
     sys.exit(0 if success else 1)

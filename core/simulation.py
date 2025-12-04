@@ -3,7 +3,6 @@
 """
 
 import time
-from typing import Optional
 
 from .context import SimulationContext
 

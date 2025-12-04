@@ -40,7 +40,7 @@ class TestDataLogger:
         """测试初始化创建目录"""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_dir = Path(tmpdir) / "new_logs"
-            logger = DataLogger(output_dir=str(test_dir))
+            _ = DataLogger(output_dir=str(test_dir))
             assert test_dir.exists()
 
     def test_set_metadata(self, logger):
@@ -338,7 +338,7 @@ class TestDataLoggerEdgeCases:
         """测试目录名包含特殊字符"""
         with tempfile.TemporaryDirectory() as tmpdir:
             special_dir = Path(tmpdir) / "logs_测试_123"
-            logger = DataLogger(output_dir=str(special_dir))
+            _ = DataLogger(output_dir=str(special_dir))
             assert special_dir.exists()
 
     def test_multiple_exports(self):

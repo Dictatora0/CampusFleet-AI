@@ -310,7 +310,7 @@ class RLEnvironment(gym.Env):
         self.current_step = 0
         self.total_orders_generated = 0
 
-        print(f" RL环境初始化完成")
+        print(" RL环境初始化完成")
         print(f"状态维度: {self.state_encoder.state_dim}")
         print(f"动作空间: {self.action_space}")
         print(f"🔄 最大步数: {max_steps}")

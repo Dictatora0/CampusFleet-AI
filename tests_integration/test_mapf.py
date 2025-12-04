@@ -98,7 +98,10 @@ def test_mapf_cbs():
                 for car in context.cars:
                     coord_info = ""
                     if hasattr(car, "use_coordinated_path") and car.use_coordinated_path:
-                        coord_info = f"CBS路径[{car.path_time_step}/{len(car.coordinated_path) if car.coordinated_path else 0}]"
+                        path_len = (
+                            len(car.coordinated_path) if car.coordinated_path else 0
+                        )
+                        coord_info = f"CBS路径[{car.path_time_step}/{path_len}]"
                     else:
                         coord_info = "传统规划"
 

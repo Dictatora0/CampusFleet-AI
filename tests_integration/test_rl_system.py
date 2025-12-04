@@ -6,9 +6,7 @@ CampusFleet AI 强化学习系统测试
 import os
 import sys
 import time
-from typing import Dict, List, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 # 添加项目路径
@@ -29,7 +27,7 @@ def test_rl_environment():
         # 创建环境
         env = RLEnvironment(grid_size=8, num_cars=2, max_steps=50, max_orders_per_episode=8)
 
-        print(f" 环境创建成功")
+        print(" 环境创建成功")
         print(f"观察空间: {env.observation_space}")
         print(f"动作空间: {env.action_space}")
         print(f"状态维度: {env.observation_space.shape[0]}")
@@ -74,7 +72,7 @@ def test_dqn_agent():
             epsilon_decay=1000,
         )
 
-        print(f" DQN智能体创建成功")
+        print(" DQN智能体创建成功")
         print(f"状态维度: {agent.state_dim}")
         print(f"动作维度: {agent.action_dim}")
         print(f"设备: {agent.device}")
@@ -133,7 +131,7 @@ def test_ppo_agent():
             state_dim=50, action_dim=10, learning_rate=3e-4, gamma=0.99, clip_ratio=0.2
         )
 
-        print(f" PPO智能体创建成功")
+        print(" PPO智能体创建成功")
         print(f"状态维度: {agent.state_dim}")
         print(f"动作维度: {agent.action_dim}")
         print(f"设备: {agent.device}")
@@ -188,7 +186,7 @@ def test_rl_scheduler():
             agent_type="PPO", grid_size=8, max_cars=3, max_orders=5, training_mode=True
         )
 
-        print(f" RL调度器创建成功")
+        print(" RL调度器创建成功")
         print(f"智能体类型: {scheduler.agent_type}")
         print(f"状态维度: {scheduler.state_encoder.state_dim}")
         print(f"训练模式: {scheduler.training_mode}")
@@ -263,7 +261,7 @@ def test_rl_integration():
                 print(f"Step {step}: 完成{stats.get('total_completed_orders', 0)}订单")
 
         final_stats = context.get_statistics()
-        print(f" RL集成测试完成")
+        print(" RL集成测试完成")
         print(f"最终统计: {final_stats}")
 
         # 检查RL调度器状态
@@ -315,7 +313,7 @@ def test_training_manager():
         print(" 开始短期训练测试...")
         results = trainer.train_agent()
 
-        print(f" 训练测试完成")
+        print(" 训练测试完成")
         print(f"最佳性能: {results['best_performance']:.3f}")
         print(f"训练时间: {results['training_time']:.2f}秒")
         print(f"总episodes: {results['total_episodes']}")
@@ -393,7 +391,7 @@ def benchmark_rl_vs_traditional():
             results[strategy.value] = {"error": str(e)}
 
     # 打印对比结果
-    print(f"\n📈 性能对比总结:")
+    print("\n📈 性能对比总结:")
     print("-" * 60)
     print(f"{'策略':<15} {'订单':<8} {'距离':<8} {'用时':<8} {'步数':<8}")
     print("-" * 60)
@@ -420,7 +418,6 @@ def main():
 
     # 检查依赖
     try:
-        import gymnasium
         import torch
 
         print(f" 依赖检查通过: PyTorch {torch.__version__}, Gymnasium已安装")
@@ -453,14 +450,14 @@ def main():
     # 性能对比测试
     print(f"\n{'='*70}")
     try:
-        benchmark_results = benchmark_rl_vs_traditional()
+        _ = benchmark_rl_vs_traditional()
         test_results["性能对比"] = True
     except Exception as e:
         print(f" 性能对比测试异常: {e}")
         test_results["性能对比"] = False
 
     # 总结
-    print(f"\n 测试总结")
+    print("\n 测试总结")
     print("=" * 70)
     passed = sum(test_results.values())
     total = len(test_results)
@@ -472,10 +469,10 @@ def main():
         print(f"{test_name}: {status}")
 
     if passed == total:
-        print(f"\n 恭喜！CampusFleet AI强化学习系统全面测试通过！")
-        print(f" 系统已准备好进行强化学习训练和推理")
+        print("\n 恭喜！CampusFleet AI强化学习系统全面测试通过！")
+        print(" 系统已准备好进行强化学习训练和推理")
     else:
-        print(f"\n警告: 部分测试失败，请检查相关组件")
+        print("\n警告: 部分测试失败，请检查相关组件")
 
     return passed == total
 
@@ -489,9 +486,9 @@ if __name__ == "__main__":
     success = main()
 
     if success:
-        print(f"\n 下一步:")
-        print(f"1. 运行长期训练: python -m rl_agents.training_manager")
-        print(f"2. 测试训练结果: 使用PPO_INFERENCE策略")
-        print(f"3. 集成到Web界面: 添加RL训练控制")
+        print("\n 下一步:")
+        print("1. 运行长期训练: python -m rl_agents.training_manager")
+        print("2. 测试训练结果: 使用PPO_INFERENCE策略")
+        print("3. 集成到Web界面: 添加RL训练控制")
 
     sys.exit(0 if success else 1)

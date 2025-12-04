@@ -360,7 +360,7 @@ class SimulationContext:
             return []
 
         exported_files = self.data_logger.export_to_csv(filename_prefix)
-        print(f"\n📁 数据已导出到以下文件:")
+        print("\n📁 数据已导出到以下文件:")
         for file_path in exported_files:
             print(f"  - {file_path}")
 
