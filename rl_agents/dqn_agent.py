@@ -131,13 +131,14 @@ class DQNAgent:
         action_dim: int,
         learning_rate: float = 1e-3,
         gamma: float = 0.95,
-        epsilon_start: float = 1.0,
+        epsilon_start: float = 0.9,
         epsilon_end: float = 0.01,
         epsilon_decay: int = 10000,
         memory_size: int = 50000,
         batch_size: int = 64,
-        target_update: int = 1000,
-        device: str = None,
+        target_update: int = 100,
+        hidden_dims: List[int] = [512, 256, 128],
+        use_double_dqn: bool = False,
     ):
         """
         初始化DQN智能体
@@ -163,6 +164,7 @@ class DQNAgent:
         self.epsilon_decay = epsilon_decay
         self.batch_size = batch_size
         self.target_update = target_update
+        self.use_double_dqn = use_double_dqn
 
         # 设备选择
         if device is None:
@@ -304,7 +306,13 @@ class DQNAgent:
 
         # 计算目标Q值
         with torch.no_grad():
-            next_q_values = self.target_network(next_states).max(1)[0]
+            if self.use_double_dqn:
+                # Double DQN: 用在线网络选择动作，用目标网络评估Q值
+                next_actions = self.q_network(next_states).argmax(1)
+                next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze()
+            else:
+                # 标准 DQN: 直接用目标网络选择最大Q值
+                next_q_values = self.target_network(next_states).max(1)[0]
             target_q_values = rewards + (self.gamma * next_q_values * ~dones)
 
         # 计算损失
