@@ -84,6 +84,45 @@ NUM_CARS=${2:-4}
 NUM_ORDERS=${3:-10}
 STRATEGY=${4:-"GREEDY_NEAREST"}
 
+# 参数验证
+if [ -n "$1" ]; then
+    # 检查网格大小是否为数字
+    if ! [[ "$GRID_SIZE" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}❌ 错误: 网格大小必须是数字，收到: $GRID_SIZE${NC}"
+        echo -e "${YELLOW}💡 使用 --help 查看帮助信息${NC}"
+        exit 1
+    fi
+    
+    # 检查范围
+    if [ "$GRID_SIZE" -lt 5 ] || [ "$GRID_SIZE" -gt 50 ]; then
+        echo -e "${YELLOW}⚠️  警告: 网格大小 $GRID_SIZE 超出推荐范围 (5-30)${NC}"
+    fi
+fi
+
+if [ -n "$2" ]; then
+    if ! [[ "$NUM_CARS" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}❌ 错误: 车辆数必须是数字，收到: $NUM_CARS${NC}"
+        echo -e "${YELLOW}💡 使用 --help 查看帮助信息${NC}"
+        exit 1
+    fi
+    
+    if [ "$NUM_CARS" -lt 1 ] || [ "$NUM_CARS" -gt 20 ]; then
+        echo -e "${YELLOW}⚠️  警告: 车辆数 $NUM_CARS 超出推荐范围 (2-10)${NC}"
+    fi
+fi
+
+if [ -n "$3" ]; then
+    if ! [[ "$NUM_ORDERS" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}❌ 错误: 订单数必须是数字，收到: $NUM_ORDERS${NC}"
+        echo -e "${YELLOW}💡 使用 --help 查看帮助信息${NC}"
+        exit 1
+    fi
+    
+    if [ "$NUM_ORDERS" -lt 1 ] || [ "$NUM_ORDERS" -gt 100 ]; then
+        echo -e "${YELLOW}⚠️  警告: 订单数 $NUM_ORDERS 超出推荐范围 (5-30)${NC}"
+    fi
+fi
+
 # 时间配置
 BACKEND_WAIT=5
 FRONTEND_WAIT=10
