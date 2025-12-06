@@ -37,13 +37,13 @@
       - [5.3.3 充电站容量管理与排队系统](#533-充电站容量管理与排队系统)
       - [5.3.4 Web 前端可视化](#534-web-前端可视化)
       - [5.2.1 调度策略详细说明](#521-调度策略详细说明)
-        - [1. GREEDY\_NEAREST（贪心最近车辆）](#1-greedy_nearest贪心最近车辆)
-        - [2. AUCTION\_CNP（拍卖机制-合同网协议）](#2-auction_cnp拍卖机制-合同网协议)
-        - [3. RL\_SCHEDULER（强化学习调度）](#3-rl_scheduler强化学习调度)
-        - [（扩展）BALANCED\_LOAD（负载均衡）](#扩展balanced_load负载均衡)
+        - [1. GREEDY_NEAREST（贪心最近车辆）](#1-greedy_nearest贪心最近车辆)
+        - [2. AUCTION_CNP（拍卖机制-合同网协议）](#2-auction_cnp拍卖机制-合同网协议)
+        - [3. RL_SCHEDULER（强化学习调度）](#3-rl_scheduler强化学习调度)
+        - [（扩展）BALANCED_LOAD（负载均衡）](#扩展balanced_load负载均衡)
         - [（扩展）HUNGARIAN（匈牙利算法）](#扩展hungarian匈牙利算法)
-        - [（扩展）VRP\_BATCHING（车辆路径问题拼单优化）](#扩展vrp_batching车辆路径问题拼单优化)
-        - [（扩展）MAPF\_CBS（多智能体路径规划-冲突感知搜索）](#扩展mapf_cbs多智能体路径规划-冲突感知搜索)
+        - [（扩展）VRP_BATCHING（车辆路径问题拼单优化）](#扩展vrp_batching车辆路径问题拼单优化)
+        - [（扩展）MAPF_CBS（多智能体路径规划-冲突感知搜索）](#扩展mapf_cbs多智能体路径规划-冲突感知搜索)
       - [5.2.2 策略选择建议](#522-策略选择建议)
     - [5.3 Web 监控面板](#53-web-监控面板)
     - [5.4 Web 界面详细使用说明](#54-web-界面详细使用说明)
@@ -82,7 +82,7 @@
   - 核心调度策略（课程实验版）：贪心最近（GREEDY_NEAREST）、拍卖机制(CNP, AUCTION_CNP)、强化学习调度（RL_SCHEDULER，内部可切换 DQN/PPO 等）。
   - 实时路径规划：A*、时空 A*、多智能体路径规划（MAPF）。
   - 智能能量管理：非线性电量消耗、三级充电决策、充电站容量管理与排队系统。
-  - 可视化：本地 GUI 仿真 + 基于 FastAPI + Vue3 的 Web 监控面板，实时显示充电站状态和车辆电量。
+  - 可视化：本地 GUI 仿真 + 基于 FastAPI + Vue3 的 Web 监控面板，实时显示充电站状态、车辆电量、拍卖日志，以及在 Canvas 上用编号标注的订单取/送货点。
   - 数据记录：支持 CSV 导出、JSON 快照和性能图表生成。
 
 适用用途：
@@ -107,7 +107,7 @@ CampusFleet-AI/
 ├── web_backend/                   # FastAPI Web 后端
 ├── web_frontend/                  # Vue3 Web 前端
 │   └── src/components/
-│       └── SimulationCanvas.vue   # Canvas可视化（已升级充电站渲染）
+│       └── SimulationCanvas.vue   # Canvas可视化（充电站 + 订单编号渲染）
 ├── experiments/                   # 强化学习对比与严谨实验脚本
 ├── assignment_submission/         # 课程作业文档（技术方案、实验步骤等）
 ├── demos/                         # 各类功能演示脚本
@@ -428,8 +428,8 @@ python test_charging_system.py
 
 # 启动Web界面查看可视化效果
 ./debug_web.sh
-# 访问 http://localhost:3000
-# 观察车辆颜色变化和充电站使用情况
+# 访问 http://localhost:3000（默认创建 15×15、6 车辆、AUCTION_CNP 拍卖策略的仿真）
+# 观察车辆颜色变化、充电站使用情况和拍卖日志面板
 ```
 
 详细文档请参考：
@@ -549,7 +549,8 @@ strategy = SchedulingStrategy.AUCTION_CNP
 **相关工具与可视化**:
 
 - 后端会记录拍卖过程日志，可通过 `/api/auction/logs` 获取
-- 前端 Web 仿真提供拍卖日志面板（Auction Log Panel），实时展示每一轮竞标结果
+- 前端 Web 仿真提供拍卖日志面板（Auction Log Panel），实时展示每一轮竞标结果和最近多轮拍卖统计
+- Web 仿真预设 `拍卖机制（多智能体）` 与 `./debug_web.sh` 脚本默认使用 `AUCTION_CNP`，打开页面即可看到实时拍卖日志
 - `test_auction_mechanism.py` 可用于对拍卖逻辑进行单元/集成测试
 
 ---
@@ -961,10 +962,10 @@ Web 界面提供两个主要页面：**仿真控制台**和**多智能体监控�
 - **显示内容**:
   - 灰色方块: 障碍物 (不可通行)
   - 橙色圆圈: 车辆当前位置
-  - 绿色方块: 订单取货点
-  - 蓝色方块: 订单送货点
+  - 绿色方块: 订单取货点（中央白色数字 = 订单 ID）
+  - 蓝色方块: 订单送货点（中央白色数字 = 订单 ID）
   - 彩色线条: 车辆规划路径
-- **交互**: 点击画布可选中车辆或查看详情
+- **交互**: 点击画布可选中车辆或查看详情，可结合订单列表通过编号快速对应取/送货点
 
 ##### 详情面板
 

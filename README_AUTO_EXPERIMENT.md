@@ -2,11 +2,24 @@
 
 ## 快速开始
 
-一键执行完整实验流程：
+一键执行完整实验流程（默认 10×10 网格，4 车，10 订单，GREEDY_NEAREST）：
 
 ```bash
 cd "/Users/lifulin/Desktop/CampusFleet AI"
 ./run_experiment.sh
+```
+
+也可以通过参数控制规模与调度策略，推荐依次对比三种核心策略：
+
+```bash
+# 1️⃣ 启发式基线：贪心最近车辆
+./run_experiment.sh 15 6 20 GREEDY_NEAREST
+
+# 2️⃣ 多智能体协商：拍卖机制（合同网协议 CNP）
+./run_experiment.sh 15 6 20 AUCTION_CNP
+
+# 3️⃣ AI 智能调度：强化学习调度（RL_SCHEDULER）
+./run_experiment.sh 15 6 20 RL_SCHEDULER
 ```
 
 ## 脚本功能
@@ -17,32 +30,48 @@ cd "/Users/lifulin/Desktop/CampusFleet AI"
 
 1. **环境准备** - 创建数据保存目录
 2. **启动服务** - 自动启动 Web 后端和前端
-3. **创建仿真** - 配置并启动 4 车 10 订单仿真
+3. **创建仿真** - 配置并启动仿真实例（默认 4 车 10 订单，可通过命令行参数调整网格/车辆/订单/调度策略）
 4. **数据采集** - 在 3 个时间点采集运行数据
+   - 智能体状态、通信日志、协作决策、性能指标
+   - **充电站状态**（充电位使用率、排队情况）
+   - **拍卖日志**（AUCTION_CNP 策略专属，记录竞标过程）
 5. **数据导出** - 导出完整 CSV 运行日志
-6. **生成图表** - 自动生成 4 张性能分析图表
+6. **生成图表** - 自动生成 4-6 张性能分析图表
+   - 基础图表（4 张）：完成率趋势、车辆利用率、订单分布、性能雷达
+   - **充电站利用率图**（展示充电系统亮点）
+   - **拍卖成本分布图**（AUCTION_CNP 策略专属，展示拍卖机制）
 7. **生成摘要** - 创建实验数据摘要文档
 
 ### ⚠️ 需要手动完成的部分
 
 1. **Web 界面截图**
 
-   - 访问：http://localhost:3000/multi-agent
-   - 截取：完整面板、智能体状态、通信日志、协作决策
+   - **多智能体监控面板**：http://localhost:3000/multi-agent
+
+     - 截取：完整面板、智能体状态、通信日志、协作决策
+
+   - **拍卖日志面板**（AUCTION_CNP 策略专属）：http://localhost:3000/
+
+     - 截取：拍卖日志面板（Auction Log Panel）
+     - 截取：竞标成本与中标车辆信息
+
+   - **充电系统可视化**：http://localhost:3000/
+     - 截取：Canvas 充电站状态（鼠标悬停查看详情）
+     - 截取：车辆电量颜色编码（绿/黄/橙/红）
 
 2. **GUI 仿真截图**
 
-   - 运行以下命令并截图：
+   - 运行以下场景并截图（启动后在菜单中选择对应策略）：
 
    ```bash
-   # 场景 1：小规模测试
-   python run_with_gui.py --strategy greedy --cars 4 --size 10 --fps 3
+   # 场景 1：贪心基线（GREEDY_NEAREST）
+   python run_with_gui.py    # 在菜单中选择 GREEDY_NEAREST
 
-   # 场景 2：中等规模测试
-   python run_with_gui.py --strategy balanced --cars 6 --size 15 --fps 4
+   # 场景 2：拍卖机制展示（AUCTION_CNP）
+   python run_with_gui.py    # 在菜单中选择 AUCTION_CNP
 
-   # 场景 3：AI 智能调度
-   python run_with_gui.py --strategy dqn_inference --cars 5 --size 12 --fps 3
+   # 场景 3：强化学习调度展示（RL_SCHEDULER）
+   python run_with_gui.py    # 在菜单中选择 RL_SCHEDULER
    ```
 
 ## 生成的数据文件
@@ -55,7 +84,9 @@ assignment_data/
 │   ├── completion_rate_trend.png   #   完成率趋势图
 │   ├── vehicle_utilization.png     #   车辆利用率图
 │   ├── order_status_distribution.png # 订单状态分布图
-│   └── performance_radar.png       #   性能雷达图
+│   ├── performance_radar.png       #   性能雷达图
+│   ├── charging_station_utilization.png # 充电站利用率图 [NEW]
+│   └── auction_cost_distribution.png    # 拍卖成本分布（AUCTION_CNP专属）[NEW]
 │
 ├── json_data/                      # 📁 JSON 快照数据
 │   ├── agents_step20.json          #   时刻 1 智能体状态
@@ -63,7 +94,9 @@ assignment_data/
 │   ├── agents_step100.json         #   时刻 3 智能体状态
 │   ├── comm_stepX.json × 3         #   通信日志快照
 │   ├── collab_stepX.json × 3       #   协作决策快照
-│   └── perf_stepX.json × 3         #   性能指标快照
+│   ├── perf_stepX.json × 3         #   性能指标快照
+│   ├── charging_stepX.json × 3     #   充电站状态快照 [NEW]
+│   └── auction_stepX.json × 3      #   拍卖日志快照（AUCTION_CNP专属）[NEW]
 │
 ├── csv_exports/                    # 📄 CSV 导出数据
 │   └── simulation_frames.csv       #   完整运行日志
@@ -161,12 +194,38 @@ open assignment_data/plots/
 
 执行完所有步骤后，你将拥有：
 
-- ✅ 4 张自动生成的性能分析图表
+- ✅ **4-6 张自动生成的性能分析图表**（可直接用于报告中的结果分析）
+  - 基础图表（4 张）：完成率趋势、车辆利用率、订单状态分布、性能雷达图
+  - 充电系统图表（1 张）：充电站利用率变化
+  - 拍卖机制图表（1 张，AUCTION_CNP 专属）：拍卖成本分布
 - ✅ 完整的 CSV 运行日志（可用于进一步分析）
-- ✅ 3 个时间点的详细 JSON 快照数据
+- ✅ 3 个时间点的详细 JSON 快照数据（包括充电站状态和拍卖日志）
 - ✅ 实验数据摘要文档
-- 📸 4-7 张 Web 界面截图（需手动）
-- 📸 3 张 GUI 仿真截图（需手动）
+- 📸 **6-10 张 Web 界面截图**（需手动，包含拍卖日志和充电系统）
+- 📸 **3 张 GUI 仿真截图**（需手动）
+
+💡 **报告撰写建议**：
+
+- **调度策略对比**：使用基础图表对比三种策略（GREEDY_NEAREST / AUCTION_CNP / RL_SCHEDULER）：
+  - 完成率趋势图：展示不同策略的订单完成效率差异
+  - 车辆利用率图：对比车辆资源使用情况
+  - 性能雷达图：多维度综合性能对比
+- **多智能体协商亮点**：使用 AUCTION_CNP 专属图表和截图：
+  - 拍卖成本分布图：展示拍卖机制的成本优化效果
+  - 拍卖日志面板截图：展示实时竞标过程和中标车辆
+  - 说明合同网协议（CNP）如何实现分布式任务分配
+- **充电系统亮点**：使用充电系统图表和截图：
+  - 充电站利用率图：展示充电站资源管理效果
+  - Canvas 充电站截图：展示充电位使用、排队情况（鼠标悬停 Tooltip）
+  - 车辆电量颜色编码截图：展示智能电量管理（绿/黄/橙/红四级预警）
+- **多智能体监控**：结合监控界面截图，说明系统具备：
+  - 智能体状态监控（车辆、调度、环境）
+  - 通信日志可视化（消息交互过程）
+  - 协作决策可视化（任务分配、车辆利用率）
+- **GUI 可视化**：结合 GUI 截图，展示：
+  - 订单取/送货点路径规划
+  - 车辆实时状态与电量变化
+  - 充电站位置与使用情况
 
 ---
 

@@ -5,7 +5,7 @@
 # 描述: 一键运行从环境准备到数据分析的完整实验流程
 # 作者: Cascade AI
 # 日期: 2025-12-04
-# 文档: 详见 EXPERIMENT_GUIDE.md
+# 文档: 详见 README_AUTO_EXPERIMENT.md
 # ============================================================================
 
 set -e  # 遇到错误立即退出
@@ -33,19 +33,18 @@ ${GREEN}参数:${NC}
   网格大小    地图尺寸 (NxN)，默认: 10，推荐范围: 5-30
   车辆数      配送车辆数量，默认: 4，推荐范围: 2-10
   订单数      随机订单数量，默认: 10，推荐范围: 5-30
-  调度策略    任务分配算法，默认: GREEDY_NEAREST
+  调度策略    任务分配算法，默认: GREEDY_NEAREST（推荐依次对比三种核心策略）
 
-${GREEN}调度策略选项:${NC}
-  GREEDY_NEAREST   - 贪心最近车辆（快速响应）
-  BALANCED_LOAD    - 负载均衡（均衡利用）
-  HUNGARIAN        - 匈牙利算法（全局最优）
-  VRP_BATCHING     - VRP批量优化（多订单拼单）
-  MAPF_CBS         - MAPF路径规划（冲突避免）
+${GREEN}调度策略选项（课程实验版三大核心）:${NC}
+  GREEDY_NEAREST   - 贪心最近车辆（启发式基线）
+  AUCTION_CNP      - 拍卖机制（合同网协议，多智能体协商）
+  RL_SCHEDULER     - 强化学习调度（DQN / PPO 等统一入口）
 
 ${GREEN}示例:${NC}
-  $0                              # 使用默认配置
-  $0 15 6 15 BALANCED_LOAD       # 中等规模负载均衡测试
-  $0 20 8 20 HUNGARIAN           # 大规模全局最优测试
+  $0                              # 使用默认配置（10×10，4 车，GREEDY_NEAREST）
+  $0 15 6 20 GREEDY_NEAREST      # 启发式基线实验
+  $0 15 6 20 AUCTION_CNP         # 拍卖机制（多智能体协商）实验
+  $0 15 6 20 RL_SCHEDULER        # 强化学习调度实验
 
 ${GREEN}输出:${NC}
   - JSON数据: assignment_data/json_data/*.json
@@ -316,12 +315,24 @@ echo ""
 
 echo ""
 echo -e "${BLUE}📸 请在浏览器中打开以下地址并截图：${NC}"
-echo -e "   ${YELLOW}http://localhost:3000/multi-agent${NC}"
+echo -e "   ${YELLOW}● 多智能体监控: http://localhost:3000/multi-agent${NC}"
 echo -e "${BLUE}   建议截图：${NC}"
 echo -e "   1. 完整监控面板"
 echo -e "   2. 智能体状态详情"
 echo -e "   3. 通信日志窗口"
 echo -e "   4. 协作决策可视化"
+echo ""
+if [ "$STRATEGY" = "AUCTION_CNP" ]; then
+    echo -e "   ${YELLOW}● 拍卖日志面板: http://localhost:3000/${NC}"
+    echo -e "${BLUE}   拍卖机制专属截图：${NC}"
+    echo -e "   5. 拍卖日志面板（Auction Log Panel）"
+    echo -e "   6. 竞标成本与中标车辆信息"
+    echo ""
+fi
+echo -e "   ${YELLOW}● 充电系统可视化: http://localhost:3000/${NC}"
+echo -e "${BLUE}   充电系统截图：${NC}"
+echo -e "   7. Canvas 充电站状态（鼠标悬停查看详情）"
+echo -e "   8. 车辆电量颜色编码（绿/黄/橙/红）"
 echo ""
 
 # 采集时刻 1：20 秒后
@@ -331,6 +342,16 @@ curl -s http://localhost:8001/api/agents/status > "$DATA_DIR/json_data/agents_st
 curl -s http://localhost:8001/api/communication/logs > "$DATA_DIR/json_data/comm_step20.json"
 curl -s http://localhost:8001/api/collaboration/decisions > "$DATA_DIR/json_data/collab_step20.json"
 curl -s http://localhost:8001/api/performance/metrics > "$DATA_DIR/json_data/perf_step20.json"
+# 采集拍卖日志（如果使用拍卖策略）
+if [ "$STRATEGY" = "AUCTION_CNP" ]; then
+    curl -s http://localhost:8001/api/auction/logs > "$DATA_DIR/json_data/auction_step20.json"
+fi
+# 采集充电站状态
+PYTHON_CMD="${PROJECT_DIR}/venv/bin/python"
+if [ ! -f "$PYTHON_CMD" ]; then
+    PYTHON_CMD="python3"
+fi
+curl -s http://localhost:8001/api/simulation/state | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data.get('grid', {}).get('charging_stations', [])))" 2>/dev/null > "$DATA_DIR/json_data/charging_step20.json" || echo '[]' > "$DATA_DIR/json_data/charging_step20.json"
 echo -e "${GREEN}✅ 时刻 1 数据已保存${NC}"
 
 # 采集时刻 2：再等 40 秒
@@ -340,6 +361,10 @@ curl -s http://localhost:8001/api/agents/status > "$DATA_DIR/json_data/agents_st
 curl -s http://localhost:8001/api/communication/logs > "$DATA_DIR/json_data/comm_step60.json"
 curl -s http://localhost:8001/api/collaboration/decisions > "$DATA_DIR/json_data/collab_step60.json"
 curl -s http://localhost:8001/api/performance/metrics > "$DATA_DIR/json_data/perf_step60.json"
+if [ "$STRATEGY" = "AUCTION_CNP" ]; then
+    curl -s http://localhost:8001/api/auction/logs > "$DATA_DIR/json_data/auction_step60.json"
+fi
+curl -s http://localhost:8001/api/simulation/state | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data.get('grid', {}).get('charging_stations', [])))" 2>/dev/null > "$DATA_DIR/json_data/charging_step60.json" || echo '[]' > "$DATA_DIR/json_data/charging_step60.json"
 echo -e "${GREEN}✅ 时刻 2 数据已保存${NC}"
 
 # 采集时刻 3：再等 40 秒
@@ -349,6 +374,12 @@ curl -s http://localhost:8001/api/agents/status > "$DATA_DIR/json_data/agents_st
 curl -s http://localhost:8001/api/communication/logs > "$DATA_DIR/json_data/comm_step100.json"
 curl -s http://localhost:8001/api/collaboration/decisions > "$DATA_DIR/json_data/collab_step100.json"
 curl -s http://localhost:8001/api/performance/metrics > "$DATA_DIR/json_data/perf_step100.json"
+if [ "$STRATEGY" = "AUCTION_CNP" ]; then
+    curl -s http://localhost:8001/api/auction/logs > "$DATA_DIR/json_data/auction_step100.json"
+    echo -e "${GREEN}✅ 拍卖日志已采集${NC}"
+fi
+curl -s http://localhost:8001/api/simulation/state | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data.get('grid', {}).get('charging_stations', [])))" 2>/dev/null > "$DATA_DIR/json_data/charging_step100.json" || echo '[]' > "$DATA_DIR/json_data/charging_step100.json"
+echo -e "${GREEN}✅ 充电站状态已采集${NC}"
 echo -e "${GREEN}✅ 时刻 3 数据已保存${NC}"
 
 # 导出完整运行日志
@@ -356,8 +387,8 @@ echo "导出完整运行日志（CSV 格式）..."
 EXPORT_RESPONSE=$(curl -s "http://localhost:8001/api/analytics/export")
 
 # 检查响应是否有效
-if echo "$EXPORT_RESPONSE" | python3 -c "import sys, json; data=json.load(sys.stdin); exit(0 if 'data' in data else 1)" 2>/dev/null; then
-    echo "$EXPORT_RESPONSE" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['data'])" \
+if echo "$EXPORT_RESPONSE" | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); exit(0 if 'data' in data else 1)" 2>/dev/null; then
+    echo "$EXPORT_RESPONSE" | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); print(data['data'])" \
       > "$DATA_DIR/csv_exports/simulation_frames.csv"
     echo -e "${GREEN}✅ 运行日志已导出${NC}"
 else
@@ -475,10 +506,11 @@ plt.savefig(DATA_DIR / 'plots/completion_rate_trend.png', dpi=300, bbox_inches='
 print("✅ 生成图表 1: completion_rate_trend.png")
 
 # 图 2：车辆利用率对比
+# 注意：后端返回的 vehicle_utilization 已经是百分比（0-100），无需再乘以100
 vehicle_utils = [
-    perf_20['metrics'].get('vehicle_utilization', 0) * 100,  # 转换为百分比
-    perf_60['metrics'].get('vehicle_utilization', 0) * 100,
-    perf_100['metrics'].get('vehicle_utilization', 0) * 100
+    perf_20['metrics'].get('vehicle_utilization', 0),
+    perf_60['metrics'].get('vehicle_utilization', 0),
+    perf_100['metrics'].get('vehicle_utilization', 0)
 ]
 
 plt.figure(figsize=(10, 6))
@@ -552,7 +584,7 @@ import numpy as np
 
 # 计算实际指标
 completion_rate = perf_final['metrics'].get('completion_rate', 0)
-vehicle_util = perf_final['metrics'].get('vehicle_utilization', 0) * 100
+vehicle_util = perf_final['metrics'].get('vehicle_utilization', 0)  # 已经是百分比
 # 计算平均处理时间指标（基于完成率）
 efficiency = min(100, completion_rate * 1.2) if completion_rate > 0 else 0
 
@@ -588,12 +620,132 @@ plt.tight_layout()
 plt.savefig(DATA_DIR / 'plots/performance_radar.png', dpi=300, bbox_inches='tight')
 print("✅ 生成图表 4: performance_radar.png")
 
+# 图 5：充电站利用率变化（如果有充电站数据）
+try:
+    charging_20 = json.load(open(DATA_DIR / 'json_data/charging_step20.json'))
+    charging_60 = json.load(open(DATA_DIR / 'json_data/charging_step60.json'))
+    charging_100 = json.load(open(DATA_DIR / 'json_data/charging_step100.json'))
+
+    if charging_20 and len(charging_20) > 0:
+        steps = [20, 60, 100]
+        station_utils = []
+
+        for charging_data in [charging_20, charging_60, charging_100]:
+            # 计算所有充电站的平均利用率
+            if charging_data:
+                total_util = sum([s.get('utilization_rate', 0) for s in charging_data])
+                avg_util = total_util / len(charging_data) if charging_data else 0
+                station_utils.append(avg_util)
+            else:
+                station_utils.append(0)
+
+        # 检查是否所有利用率都为0
+        if all(u == 0 for u in station_utils):
+            # 生成提示性图表
+            plt.figure(figsize=(10, 6))
+            plt.text(0.5, 0.5,
+                     'No Charging Activity Detected\n\n'
+                     'Vehicles did not use charging stations during this experiment.\n'
+                     'This may occur when:\n'
+                     '• Map is small and orders are few\n'
+                     '• Vehicle battery capacity is sufficient\n'
+                     '• Experiment duration is short\n\n'
+                     'Try: Increase map size, orders, or simulation steps',
+                     ha='center', va='center', fontsize=12,
+                     bbox=dict(boxstyle='round,pad=1', facecolor='wheat', alpha=0.3))
+            plt.title('Charging Station Utilization Over Time', fontsize=14, fontweight='bold', pad=15)
+            plt.axis('off')
+            plt.tight_layout()
+            plt.savefig(DATA_DIR / 'plots/charging_station_utilization.png', dpi=300, bbox_inches='tight')
+            print("ℹ️  生成图表 5: charging_station_utilization.png（无充电活动，已生成提示图）")
+        else:
+            # 正常绘制图表
+            plt.figure(figsize=(10, 6))
+            plt.plot(steps, station_utils, marker='s', linewidth=2, markersize=10,
+                     color='#9b59b6', label='Charging Station Utilization')
+            plt.xlabel('Simulation Steps', fontsize=12)
+            plt.ylabel('Average Utilization (%)', fontsize=12)
+            plt.title('Charging Station Utilization Over Time', fontsize=14, fontweight='bold', pad=15)
+            plt.xticks(steps, [f'Step {s}' for s in steps])
+            plt.ylim(0, 105)
+            plt.grid(True, alpha=0.3, linestyle='--')
+
+            for i, (x, y) in enumerate(zip(steps, station_utils)):
+                plt.annotate(f'{y:.1f}%',
+                             xy=(x, y),
+                             xytext=(0, 10),
+                             textcoords='offset points',
+                             ha='center',
+                             fontsize=10,
+                             bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.7))
+
+            plt.legend(loc='best', fontsize=10)
+            plt.tight_layout()
+            plt.savefig(DATA_DIR / 'plots/charging_station_utilization.png', dpi=300, bbox_inches='tight')
+            print("✅ 生成图表 5: charging_station_utilization.png")
+    else:
+        print("ℹ️  跳过充电站利用率图表（无充电站数据）")
+except (FileNotFoundError, json.JSONDecodeError) as e:
+    print(f"ℹ️  跳过充电站利用率图表（数据文件错误: {e}）")
+
+# 图 6：拍卖成本分布（仅当使用 AUCTION_CNP 策略时）
+import sys
+import os
+strategy = os.environ.get('STRATEGY', '')
+
+if strategy == 'AUCTION_CNP':
+    try:
+        auction_data = json.load(open(DATA_DIR / 'json_data/auction_step100.json'))
+
+        if auction_data.get('auction_history') and len(auction_data['auction_history']) > 0:
+            # 提取所有竞标成本
+            all_costs = []
+            winner_costs = []
+
+            for record in auction_data['auction_history']:
+                for log in record.get('logs', []):
+                    if log.get('phase') == 'winner_selection':
+                        winner_cost = log.get('winner_cost', 0)
+                        winner_costs.append(winner_cost)
+
+            if winner_costs:
+                plt.figure(figsize=(10, 6))
+
+                # 绘制直方图
+                n, bins, patches = plt.hist(winner_costs, bins=15, color='#e74c3c', alpha=0.7, edgecolor='black')
+
+                plt.xlabel('Winning Bid Cost', fontsize=12)
+                plt.ylabel('Frequency', fontsize=12)
+                plt.title('Auction Winning Bid Cost Distribution', fontsize=14, fontweight='bold', pad=15)
+                plt.grid(True, alpha=0.3, axis='y', linestyle='--')
+
+                # 添加统计信息
+                avg_cost = sum(winner_costs) / len(winner_costs)
+                plt.axvline(avg_cost, color='red', linestyle='--', linewidth=2, label=f'Average: {avg_cost:.1f}')
+                plt.legend(loc='best', fontsize=10)
+
+                plt.tight_layout()
+                plt.savefig(DATA_DIR / 'plots/auction_cost_distribution.png', dpi=300, bbox_inches='tight')
+                print("✅ 生成图表 6: auction_cost_distribution.png（拍卖机制专属）")
+            else:
+                print("ℹ️  跳过拍卖成本分布图（无拍卖记录）")
+        else:
+            print("ℹ️  跳过拍卖成本分布图（无拍卖数据）")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"ℹ️  跳过拍卖成本分布图（数据文件错误: {e}）")
+
 print("\n📊 所有图表生成完成！")
 print(f"图表保存位置: {DATA_DIR / 'plots'}")
 PLOTSCRIPT
 
-# 运行绘图脚本
-python3 "$DATA_DIR/generate_plots.py"
+# 运行绘图脚本（传递策略参数）
+# 使用虚拟环境中的 Python（包含所需的 matplotlib 等依赖）
+if [ -f "$PROJECT_DIR/venv/bin/python" ]; then
+    STRATEGY="$STRATEGY" "$PROJECT_DIR/venv/bin/python" "$DATA_DIR/generate_plots.py"
+else
+    # 回退到系统 Python
+    STRATEGY="$STRATEGY" python3 "$DATA_DIR/generate_plots.py"
+fi
 
 # 生成实验报告摘要
 echo -e "\n${GREEN}生成实验数据摘要...${NC}"
@@ -605,10 +757,10 @@ cat > "$DATA_DIR/experiment_summary.txt" << SUMMARY
 
 一、实验配置
 -----------
-网格大小: 10×10
-车辆数量: 4 辆
-订单数量: 10 个
-调度策略: GREEDY_NEAREST
+网格大小: ${GRID_SIZE}×${GRID_SIZE}
+车辆数量: ${NUM_CARS} 辆
+订单数量: ${NUM_ORDERS} 个
+调度策略: ${STRATEGY}
 数据记录: 已启用
 
 二、关键性能指标（最终状态）
@@ -631,11 +783,16 @@ cat >> "$DATA_DIR/experiment_summary.txt" << SUMMARY2
 
 三、生成的数据文件
 -----------------
-📊 可视化图表（4 张）:
-  - completion_rate_trend.png
-  - vehicle_utilization.png
-  - order_status_distribution.png
-  - performance_radar.png
+📊 可视化图表（基础 4 张 + 扩展图表）:
+  基础性能图表:
+  - completion_rate_trend.png（完成率趋势）
+  - vehicle_utilization.png（车辆利用率）
+  - order_status_distribution.png（订单状态分布）
+  - performance_radar.png（性能雷达图）
+
+  系统亮点图表:
+  - charging_station_utilization.png（充电站利用率）
+  - auction_cost_distribution.png（拍卖成本分布，仅AUCTION_CNP策略）
 
 📁 原始数据文件:
   - simulation_frames.csv (完整运行日志)
@@ -643,6 +800,8 @@ cat >> "$DATA_DIR/experiment_summary.txt" << SUMMARY2
   - comm_stepX.json × 3 (通信日志快照)
   - collab_stepX.json × 3 (协作决策快照)
   - perf_stepX.json × 3 (性能指标快照)
+  - charging_stepX.json × 3 (充电站状态快照) [NEW]
+  - auction_stepX.json × 3 (拍卖日志快照，AUCTION_CNP策略专属) [NEW]
 
 四、手动操作提醒
 ---------------
@@ -651,16 +810,16 @@ cat >> "$DATA_DIR/experiment_summary.txt" << SUMMARY2
 2. 运行 GUI 测试（见下方命令）并截图
 3. 整理截图到 assignment_data/screenshots/ 目录
 
-五、GUI 测试命令
----------------
-场景 1 - 小规模测试:
-  python run_with_gui.py --strategy greedy --cars 4 --size 10 --fps 3
+五、GUI 测试命令（可选，配合报告截图）
+----------------
+场景 1 - 贪心基线（GREEDY_NEAREST）:
+  python run_with_gui.py    # 运行后在菜单中选择 GREEDY_NEAREST
 
-场景 2 - 中等规模测试:
-  python run_with_gui.py --strategy balanced --cars 6 --size 15 --fps 4
+场景 2 - 拍卖机制展示（AUCTION_CNP）:
+  python run_with_gui.py    # 运行后在菜单中选择 AUCTION_CNP
 
-场景 3 - AI 智能调度:
-  python run_with_gui.py --strategy dqn_inference --cars 5 --size 12 --fps 3
+场景 3 - 强化学习调度展示（RL_SCHEDULER）:
+  python run_with_gui.py    # 运行后在菜单中选择 RL_SCHEDULER
 
 ========================================
 SUMMARY2
@@ -674,6 +833,11 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 echo -e "${YELLOW}📂 所有数据已保存到: $DATA_DIR${NC}"
 echo -e "${YELLOW}📊 查看图表: $DATA_DIR/plots/${NC}"
+echo -e "${GREEN}   基础图表（4张）: 完成率、车辆利用率、订单分布、性能雷达${NC}"
+echo -e "${GREEN}   系统亮点图表: 充电站利用率${NC}"
+if [ "$STRATEGY" = "AUCTION_CNP" ]; then
+    echo -e "${GREEN}   拍卖机制图表: 拍卖成本分布（专属）${NC}"
+fi
 echo -e "${YELLOW}📄 查看摘要: $DATA_DIR/experiment_summary.txt${NC}"
 echo ""
 echo -e "${BLUE}🌐 Web 服务仍在运行：${NC}"
@@ -684,15 +848,15 @@ echo -e "${RED}⚠️  请手动完成：${NC}"
 echo -e "   1. 在浏览器中截取 Web 界面截图"
 echo -e "   2. 查看生成的实验摘要文件"
 echo ""
-echo -e "${BLUE}💡 可选：运行 GUI 测试并截图${NC}"
-echo -e "${GREEN}场景 1 - 小规模测试:${NC}"
-echo -e "  python run_with_gui.py --strategy greedy --cars 4 --size 10 --fps 3"
+echo -e "${BLUE}💡 可选：运行 GUI 场景并截图（用于报告附图）${NC}"
+echo -e "${GREEN}场景 1 - 贪心基线（GREEDY_NEAREST）:${NC}"
+echo -e "  python run_with_gui.py    # 在菜单中选择 GREEDY_NEAREST"
 echo ""
-echo -e "${GREEN}场景 2 - 中等规模测试:${NC}"
-echo -e "  python run_with_gui.py --strategy balanced --cars 6 --size 15 --fps 4"
+echo -e "${GREEN}场景 2 - 拍卖机制展示（AUCTION_CNP）:${NC}"
+echo -e "  python run_with_gui.py    # 在菜单中选择 AUCTION_CNP"
 echo ""
-echo -e "${GREEN}场景 3 - AI 智能调度:${NC}"
-echo -e "  python run_with_gui.py --strategy dqn_inference --cars 5 --size 12 --fps 3"
+echo -e "${GREEN}场景 3 - 强化学习调度展示（RL_SCHEDULER）:${NC}"
+echo -e "  python run_with_gui.py    # 在菜单中选择 RL_SCHEDULER"
 echo ""
 echo -e "${YELLOW}停止服务请运行: ./stop_experiment.sh${NC}"
 echo ""
