@@ -35,6 +35,11 @@ class DataLogger:
             "scheduling_strategy": None,
         }
 
+    @property
+    def frame_records(self):
+        """向后兼容属性：frame_records -> frame_data"""
+        return self.frame_data
+
     def set_metadata(self, grid_size: int, num_cars: int, strategy: str):
         """设置仿真元数据"""
         self.metadata["grid_size"] = grid_size
@@ -184,14 +189,15 @@ class DataLogger:
         """
         if not self.frame_data:
             return ""
-        
+
         import io
+
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=self.frame_data[0].keys())
         writer.writeheader()
         writer.writerows(self.frame_data)
         return output.getvalue()
-    
+
     def clear(self):
         """清空所有记录的数据"""
         self.frame_data.clear()

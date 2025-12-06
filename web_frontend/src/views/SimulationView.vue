@@ -19,34 +19,45 @@
           <!-- 快速配置 -->
           <div class="quick-config mb-16">
             <el-row :gutter="12">
-              <el-col :span="8">
+              <el-col :span="6">
                 <el-select
                   v-model="selectedPreset"
                   placeholder="选择预设"
                   @change="loadPreset"
                 >
-                  <el-option label="小规模测试" value="small" />
-                  <el-option label="中等规模演示" value="medium" />
-                  <el-option label="大规模仿真" value="large" />
-                  <el-option label="MAPF协调演示" value="mapfDemo" />
-                  <el-option label="VRP拼单演示" value="vrpDemo" />
+                  <el-option label="🎯 贪心算法（启发式）" value="greedy" />
+                  <el-option label="🎪 拍卖机制（多智能体）" value="auction" />
+                  <el-option label="🤖 强化学习（深度学习）" value="rl" />
                 </el-select>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="6">
+                <el-input-number
+                  v-model="initialOrderCount"
+                  :min="0"
+                  :max="20"
+                  placeholder="初始订单数"
+                  style="width: 100%"
+                >
+                  <template #prefix>📦</template>
+                </el-input-number>
+              </el-col>
+              <el-col :span="6">
                 <el-button
                   type="primary"
                   @click="createSimulation"
                   :loading="creating"
+                  style="width: 100%"
                 >
                   <el-icon><Plus /></el-icon>
                   创建仿真
                 </el-button>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="6">
                 <el-button
                   type="danger"
                   @click="resetSimulation"
                   :disabled="!hasSimulation"
+                  style="width: 100%"
                 >
                   <el-icon><RefreshRight /></el-icon>
                   重置
@@ -112,8 +123,8 @@
     <!-- 主体区域 -->
     <div class="main-content">
       <el-row :gutter="16">
-        <!-- 可视化面板 -->
-        <el-col :span="16">
+        <!-- 可视化面板（包含Canvas和侧边信息） -->
+        <el-col :span="24">
           <el-card class="visualization-card">
             <template #header>
               <div class="card-header">
@@ -144,59 +155,122 @@
               </div>
             </template>
 
-            <SimulationCanvas
-              :simulation-data="simulation"
-              :ui-config="ui"
-              @vehicle-click="selectVehicle"
-              @grid-click="onGridClick"
-            />
-          </el-card>
-        </el-col>
-
-        <!-- 信息面板 -->
-        <el-col :span="8">
-          <!-- 车辆信息 -->
-          <el-card class="info-card mb-16">
-            <template #header>
-              <div class="card-header">
-                <h3 class="title">
-                  <el-icon><TruckFilled /></el-icon>
-                  车辆状态
-                </h3>
+            <!-- 内部flex布局：左Canvas + 右信息面板 -->
+            <div class="canvas-container">
+              <div class="canvas-area">
+                <SimulationCanvas
+                  :grid-size="simulation.grid.size"
+                  :vehicles="simulation.vehicles"
+                  :orders="simulation.orders.pending"
+                  :obstacles="simulation.grid.obstacles"
+                  :charging-stations="simulation.grid.charging_stations"
+                  @cell-click="onGridClick"
+                />
               </div>
-            </template>
 
-            <VehicleList
-              :vehicles="simulation.vehicles"
-              :selected-vehicle="ui.selectedVehicle"
-              @select-vehicle="selectVehicle"
-            />
-          </el-card>
+              <!-- 右侧信息面板 -->
+              <div class="side-panels">
+                <!-- 图例说明 -->
+                <el-card class="info-card legend-card mb-16">
+                  <template #header>
+                    <div class="card-header">
+                      <h3 class="title">
+                        <el-icon><Document /></el-icon>
+                        图例说明
+                      </h3>
+                    </div>
+                  </template>
 
-          <!-- 订单信息 -->
-          <el-card class="info-card">
-            <template #header>
-              <div class="card-header">
-                <h3 class="title">
-                  <el-icon><List /></el-icon>
-                  订单管理
-                </h3>
-                <el-button
-                  type="primary"
-                  size="small"
-                  @click="showOrderDialog = true"
-                >
-                  <el-icon><Plus /></el-icon>
-                  添加
-                </el-button>
+                  <div class="legend-items">
+                    <div class="legend-item">
+                      <div class="legend-icon obstacle-icon"></div>
+                      <span>障碍物</span>
+                    </div>
+                    <div class="legend-item">
+                      <div class="legend-icon charging-icon">⚡</div>
+                      <span>充电站</span>
+                    </div>
+                    <div class="legend-item">
+                      <div class="legend-icon vehicle-icon vehicle-good"></div>
+                      <span>电量充足(≥50%)</span>
+                    </div>
+                    <div class="legend-item">
+                      <div
+                        class="legend-icon vehicle-icon vehicle-medium"
+                      ></div>
+                      <span>电量中等(30-50%)</span>
+                    </div>
+                    <div class="legend-item">
+                      <div class="legend-icon vehicle-icon vehicle-low"></div>
+                      <span>电量低(10-30%)</span>
+                    </div>
+                    <div class="legend-item">
+                      <div
+                        class="legend-icon vehicle-icon vehicle-critical"
+                      ></div>
+                      <span>严重低电(&lt;10%)</span>
+                    </div>
+                    <div class="legend-item">
+                      <div class="legend-icon order-pickup"></div>
+                      <span>取货点</span>
+                    </div>
+                    <div class="legend-item">
+                      <div class="legend-icon order-delivery"></div>
+                      <span>送货点</span>
+                    </div>
+                  </div>
+                </el-card>
+
+                <!-- 车辆信息 -->
+                <el-card class="info-card mb-16">
+                  <template #header>
+                    <div class="card-header">
+                      <h3 class="title">
+                        <el-icon><Van /></el-icon>
+                        车辆状态
+                      </h3>
+                    </div>
+                  </template>
+
+                  <VehicleList
+                    :vehicles="simulation.vehicles"
+                    :selected-vehicle="ui.selectedVehicle"
+                    @select-vehicle="selectVehicle"
+                  />
+                </el-card>
+
+                <!-- 订单信息 -->
+                <el-card class="info-card">
+                  <template #header>
+                    <div class="card-header">
+                      <h3 class="title">
+                        <el-icon><List /></el-icon>
+                        订单管理
+                      </h3>
+                      <el-button
+                        type="primary"
+                        size="small"
+                        @click="showOrderDialog = true"
+                      >
+                        <el-icon><Plus /></el-icon>
+                        添加
+                      </el-button>
+                    </div>
+                  </template>
+
+                  <OrderList
+                    :orders="simulation.orders.pending"
+                    :selected-order="ui.selectedOrder"
+                    @select-order="selectOrder"
+                  />
+                </el-card>
+
+                <!-- 拍卖日志面板 -->
+                <el-card class="info-card auction-card">
+                  <AuctionLogPanel :strategy="simulation.strategy" />
+                </el-card>
               </div>
-            </template>
-
-            <OrderList
-              :orders="simulation.orders.pending"
-              :selected-order="ui.selectedOrder"
-              @select-order="selectOrder"
-            />
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -206,7 +280,8 @@
     <OrderCreateDialog
       v-model="showOrderDialog"
       :grid-size="simulation.grid.size"
-      @create-order="createOrder"
+      @create="createOrder"
+      @create-random="createRandomOrder"
     />
   </div>
 </template>
@@ -214,11 +289,13 @@
 <script>
 import { ref, computed, onMounted } from "vue";
 import { useStore } from "vuex";
+import { Operation, Van } from "@element-plus/icons-vue";
 import { simulationAPI, presetConfigs, utils } from "@/api/simulation";
 import SimulationCanvas from "@/components/SimulationCanvas.vue";
 import VehicleList from "@/components/VehicleList.vue";
 import OrderList from "@/components/OrderList.vue";
 import OrderCreateDialog from "@/components/OrderCreateDialog.vue";
+import AuctionLogPanel from "@/components/AuctionLogPanel.vue";
 
 export default {
   name: "SimulationView",
@@ -227,16 +304,20 @@ export default {
     VehicleList,
     OrderList,
     OrderCreateDialog,
+    AuctionLogPanel,
+    Operation,
+    Van,
   },
 
   setup() {
     const store = useStore();
 
     // 响应式数据
-    const selectedPreset = ref("medium");
+    const selectedPreset = ref("auction");
     const creating = ref(false);
     const showOrderDialog = ref(false);
-    const currentConfig = ref(presetConfigs.medium);
+    const currentConfig = ref(presetConfigs.auction);
+    const initialOrderCount = ref(5); // 默认创建5个订单
 
     // 计算属性
     const simulation = computed(() => store.state.simulation);
@@ -269,6 +350,21 @@ export default {
 
         // 获取初始状态
         await refreshState();
+
+        // 自动添加随机订单（如果设置了数量）
+        if (initialOrderCount.value > 0) {
+          console.log(`🎲 自动添加 ${initialOrderCount.value} 个初始订单...`);
+          const orderPromises = [];
+          for (let i = 0; i < initialOrderCount.value; i++) {
+            orderPromises.push(simulationAPI.createRandomOrder());
+          }
+          await Promise.all(orderPromises);
+          utils.showSuccess(`已自动添加${initialOrderCount.value}个随机订单`);
+          console.log("✅ 初始订单添加完成");
+
+          // 刷新状态以显示订单
+          await refreshState();
+        }
       } catch (error) {
         utils.showError(`仿真创建失败: ${utils.formatError(error)}`);
       } finally {
@@ -320,6 +416,7 @@ export default {
           store.dispatch("updateSimulation", {
             isRunning: state.is_running,
             step: state.step,
+            strategy: state.strategy || "", // 添加策略字段
             vehicles: state.vehicles || [],
             orders: state.orders || { pending: [], statistics: {} },
             grid: state.grid || {
@@ -343,6 +440,16 @@ export default {
         showOrderDialog.value = false;
       } catch (error) {
         utils.showError(`订单创建失败: ${utils.formatError(error)}`);
+      }
+    };
+
+    const createRandomOrder = async () => {
+      try {
+        await simulationAPI.createRandomOrder();
+        utils.showSuccess("随机订单创建成功");
+        showOrderDialog.value = false;
+      } catch (error) {
+        utils.showError(`随机订单创建失败: ${utils.formatError(error)}`);
       }
     };
 
@@ -383,6 +490,7 @@ export default {
       selectedPreset,
       creating,
       showOrderDialog,
+      initialOrderCount,
 
       // 计算属性
       simulation,
@@ -400,6 +508,7 @@ export default {
       stepSimulation,
       resetSimulation,
       createOrder,
+      createRandomOrder,
       selectVehicle,
       selectOrder,
       toggleShowPath,
@@ -413,11 +522,12 @@ export default {
 <style lang="scss" scoped>
 .simulation-view {
   padding: 24px 32px;
-  height: calc(100vh - 60px);
+  min-height: calc(100vh - 60px);
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
 }
 
 .control-panel {
@@ -508,12 +618,12 @@ export default {
 
 .main-content {
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
 
   .visualization-card {
-    height: calc(100vh - 200px);
+    min-height: 1080px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 
     &::before {
       content: "";
@@ -546,23 +656,49 @@ export default {
 
     :deep(.el-card__body) {
       height: calc(100% - 60px);
-      padding: 0;
+      padding: 16px;
       background: #fafbfc;
     }
   }
 
+  // Canvas容器flex布局
+  .canvas-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    width: 100%;
+
+    .canvas-area {
+      flex-shrink: 0;
+    }
+
+    .side-panels {
+      flex: 1; // 自动填充所有剩余空间
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 280px;
+      // 移除max-width，让它占满所有剩余空间
+    }
+  }
+
   .info-card {
-    height: calc((100vh - 200px) / 2 - 8px);
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     &:hover {
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+      transform: translateY(-2px);
+
       .card-header .title {
         color: #667eea;
       }
     }
 
     :deep(.el-card__body) {
-      height: calc(100% - 60px);
+      max-height: 320px;
       overflow-y: auto;
       padding: 16px;
 
@@ -585,6 +721,97 @@ export default {
         }
       }
     }
+  }
+}
+
+// 图例卡片样式
+.legend-card {
+  .legend-items {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); // 2列网格布局
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #555;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+
+    &:hover {
+      background: rgba(102, 126, 234, 0.05);
+      transform: translateX(4px);
+    }
+
+    .legend-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      &.obstacle-icon {
+        background: #424242;
+      }
+
+      &.charging-icon {
+        background: #4caf50;
+        color: white;
+        font-size: 18px;
+        border-radius: 50%;
+      }
+
+      &.vehicle-icon {
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+        &.vehicle-good {
+          background: #4caf50;
+        }
+
+        &.vehicle-medium {
+          background: #ffc107;
+        }
+
+        &.vehicle-low {
+          background: #ff5722;
+        }
+
+        &.vehicle-critical {
+          background: #f44336;
+        }
+      }
+
+      &.order-pickup {
+        background: #4caf50;
+      }
+
+      &.order-delivery {
+        background: #2196f3;
+      }
+    }
+
+    span {
+      flex: 1;
+      font-weight: 500;
+    }
+  }
+}
+
+// 拍卖日志卡片样式
+.auction-card {
+  margin-top: 16px;
+
+  :deep(.el-card__body) {
+    padding: 0;
+    height: 500px;
   }
 }
 
@@ -624,11 +851,7 @@ export default {
 
   .main-content {
     .visualization-card {
-      height: 400px;
-    }
-
-    .info-card {
-      height: 300px;
+      min-height: 1080px;
     }
   }
 }

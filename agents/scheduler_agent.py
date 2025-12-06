@@ -9,17 +9,17 @@ from typing import Dict, List, Tuple
 
 
 class SchedulingStrategy(Enum):
-    """调度策略枚举"""
+    """
+    调度策略枚举（课程实验版 - 精简为3个核心AI策略）
 
-    GREEDY_NEAREST = "Greedy Nearest"
-    BALANCED_LOAD = "Balanced Load"
-    HUNGARIAN = "Hungarian"
-    VRP_BATCHING = "VRP Batching"  # VRP拼单策略
-    MAPF_CBS = "MAPF CBS"  # CBS协调规划
-    DQN_LEARNING = "DQN Learning"  # 新增：DQN强化学习（训练模式）
-    DQN_INFERENCE = "DQN Inference"  # 新增：DQN强化学习（推理模式）
-    PPO_LEARNING = "PPO Learning"  # 新增：PPO强化学习（训练模式）
-    PPO_INFERENCE = "PPO Inference"  # 新增：PPO强化学习（推理模式）
+    1. GREEDY_NEAREST - 启发式算法（基线对比）
+    2. AUCTION_CNP - 多智能体协商（合同网协议）
+    3. RL_SCHEDULER - 深度强化学习（DQN/PPO）
+    """
+
+    GREEDY_NEAREST = "Greedy Nearest"  # 贪心最近
+    AUCTION_CNP = "Auction CNP"  # 合同网协议拍卖
+    RL_SCHEDULER = "RL Scheduler"  # 强化学习（统一接口）
 
 
 class SchedulerAgent:
@@ -72,25 +72,15 @@ class SchedulerAgent:
         if not idle_cars:
             return []
 
-        # 根据策略选择调度方法
+        # 根据策略选择调度方法（精简版：3个核心AI策略）
         if self.strategy == SchedulingStrategy.GREEDY_NEAREST:
             assignments = self._greedy_nearest_schedule(idle_cars, orders, grid_env)
-        elif self.strategy == SchedulingStrategy.BALANCED_LOAD:
-            assignments = self._balanced_load_schedule(idle_cars, orders, grid_env)
-        elif self.strategy == SchedulingStrategy.HUNGARIAN:
-            assignments = self._hungarian_schedule(idle_cars, orders, grid_env)
-        elif self.strategy == SchedulingStrategy.VRP_BATCHING:
-            assignments = self._vrp_batching_schedule(idle_cars, orders, grid_env)
-        elif self.strategy == SchedulingStrategy.MAPF_CBS:
-            assignments = self._mapf_cbs_schedule(idle_cars, orders, grid_env)
-        elif self.strategy in [
-            SchedulingStrategy.DQN_LEARNING,
-            SchedulingStrategy.DQN_INFERENCE,
-            SchedulingStrategy.PPO_LEARNING,
-            SchedulingStrategy.PPO_INFERENCE,
-        ]:
+        elif self.strategy == SchedulingStrategy.AUCTION_CNP:
+            assignments = self._auction_cnp_schedule(idle_cars, orders, grid_env)
+        elif self.strategy == SchedulingStrategy.RL_SCHEDULER:
             assignments = self._rl_schedule(idle_cars, orders, grid_env)
         else:
+            # 默认回退到贪心策略
             assignments = self._greedy_nearest_schedule(idle_cars, orders, grid_env)
 
         return assignments
@@ -451,6 +441,184 @@ class SchedulerAgent:
             )
 
         return assignments
+
+    def _auction_cnp_schedule(self, cars: List, orders: List, grid_env) -> List[Tuple]:
+        """
+        拍卖机制（合同网协议CNP）：订单作为拍卖品，车辆竞标
+        Contract Net Protocol:
+        1. 调度器发布订单（Task Announcement）
+        2. 车辆计算竞标成本并提交报价（Bidding）
+        3. 调度器选择最优竞标者（Winner Selection）
+        4. 分配订单并确认（Award）
+
+        Args:
+            cars: 空闲车辆列表
+            orders: 待分配订单列表
+            grid_env: 网格环境
+        Returns:
+            分配结果列表
+        """
+        assignments = []
+        auction_logs = []  # 记录拍卖日志
+
+        available_cars = cars.copy()
+
+        for order in orders:
+            if not available_cars:
+                break
+
+            # === Phase 1: Task Announcement ===
+            auction_logs.append(
+                {
+                    "phase": "announcement",
+                    "order_id": order.order_id,
+                    "pickup": order.pickup_point,
+                    "delivery": order.delivery_point,
+                    "bidders_count": len(available_cars),
+                }
+            )
+
+            # === Phase 2: Bidding ===
+            bids = []
+            for car in available_cars:
+                # 车辆计算竞标成本（调用车辆的竞标方法）
+                bid_cost = self._calculate_bid_cost(car, order, grid_env)
+
+                if bid_cost < float("inf"):  # 只接受有效报价
+                    bids.append(
+                        {
+                            "car": car,
+                            "cost": bid_cost,
+                            "car_id": car.car_id,
+                            "battery": car.battery,
+                            "distance": grid_env.calculate_distance(
+                                car.position, order.pickup_point
+                            ),
+                        }
+                    )
+
+            if not bids:
+                auction_logs.append(
+                    {"phase": "no_bids", "order_id": order.order_id, "reason": "无有效竞标"}
+                )
+                continue
+
+            # === Phase 3: Winner Selection ===
+            # 选择成本最低的竞标者
+            winner_bid = min(bids, key=lambda b: b["cost"])
+            winner_car = winner_bid["car"]
+
+            auction_logs.append(
+                {
+                    "phase": "winner_selection",
+                    "order_id": order.order_id,
+                    "winner_car_id": winner_car.car_id,
+                    "winner_cost": winner_bid["cost"],
+                    "total_bids": len(bids),
+                    "runner_up_cost": sorted(bids, key=lambda b: b["cost"])[1]["cost"]
+                    if len(bids) > 1
+                    else None,
+                }
+            )
+
+            # === Phase 4: Award ===
+            assignments.append(
+                (winner_car.car_id, order.order_id, order.pickup_point, order.delivery_point)
+            )
+            available_cars.remove(winner_car)
+            self.total_assignments += 1
+
+            auction_logs.append(
+                {
+                    "phase": "award",
+                    "order_id": order.order_id,
+                    "car_id": winner_car.car_id,
+                    "status": "success",
+                }
+            )
+
+        # 记录拍卖历史
+        if assignments:
+            import time
+
+            self.assignment_history.append(
+                {
+                    "assignments": assignments,
+                    "strategy": self.strategy.value,
+                    "auction_logs": auction_logs,
+                    "total_auctions": len(orders),
+                    "successful_auctions": len(assignments),
+                    "timestamp": time.time(),
+                }
+            )
+
+        return assignments
+
+    def _calculate_bid_cost(self, car, order, grid_env) -> float:
+        """
+        计算车辆的竞标成本（CNP核心算法）
+        考虑因素：
+        1. 距离成本：到取货点的距离
+        2. 电量成本：剩余电量是否充足
+        3. 负载成本：当前任务队列长度
+
+        Args:
+            car: 车辆智能体
+            order: 订单对象
+            grid_env: 网格环境
+        Returns:
+            竞标成本（越低越好），如果无法执行返回inf
+        """
+        # 1. 距离成本
+        distance_to_pickup = grid_env.calculate_distance(car.position, order.pickup_point)
+        delivery_distance = grid_env.calculate_distance(order.pickup_point, order.delivery_point)
+        total_distance = distance_to_pickup + delivery_distance
+
+        # 2. 电量成本（预估消耗）
+        # 使用非线性电量消耗模型
+        current_capacity = len(car.task_queue) if hasattr(car, "task_queue") else 0
+        estimated_consumption = (
+            total_distance * car.battery_consumption_rate * (1 + 0.3 * current_capacity)
+        )
+
+        # 检查电量是否充足（需要预留到充电站的距离）
+        if hasattr(grid_env, "charging_station_manager"):
+            nearest_charger = grid_env.charging_station_manager.get_nearest_available_station(
+                car.position
+            )
+            if nearest_charger:
+                charger_distance = grid_env.calculate_distance(
+                    order.delivery_point, nearest_charger.position
+                )
+                required_battery = (
+                    estimated_consumption + charger_distance * car.battery_consumption_rate
+                )
+
+                if car.battery < required_battery:
+                    return float("inf")  # 电量不足，拒绝竞标
+
+        # 3. 负载成本（当前任务队列）
+        queue_length = current_capacity
+        load_penalty = queue_length * 10  # 每个待处理任务增加10成本
+
+        # 4. 电量惩罚（电量越低，竞标成本越高，鼓励高电量车辆接单）
+        battery_percentage = car.battery / car.max_battery
+        if battery_percentage < 0.3:
+            battery_penalty = 50  # 低电量大幅增加成本
+        elif battery_percentage < 0.5:
+            battery_penalty = 20
+        else:
+            battery_penalty = 0
+
+        # 综合成本计算
+        total_cost = (
+            distance_to_pickup * 2.0
+            + delivery_distance * 1.0  # 到取货点距离权重2.0
+            + load_penalty  # 配送距离权重1.0
+            + battery_penalty  # 负载惩罚  # 电量惩罚
+        )
+
+        return total_cost
 
     def _init_rl_schedulers(self, grid_size: int, max_cars: int, max_orders: int):
         """初始化RL调度器"""

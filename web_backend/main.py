@@ -54,6 +54,7 @@ class SimulationManager:
         self.websocket_clients: List[WebSocket] = []
         self.simulation_thread: Optional[threading.Thread] = None
         self.auto_step_interval = 1.0  # 自动步进间隔（秒）
+        self.event_loop = None  # 保存事件循环引用
 
     def create_simulation(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """创建新仿真"""
@@ -128,8 +129,9 @@ class SimulationManager:
                     scheduler=self.context.scheduler,
                 )
 
-            # 广播更新到WebSocket客户端
-            asyncio.create_task(self._broadcast_state_update())
+            # 广播更新到WebSocket客户端（从同步线程安全调度）
+            if self.event_loop and self.websocket_clients:
+                asyncio.run_coroutine_threadsafe(self._broadcast_state_update(), self.event_loop)
 
             return {
                 "status": "success",
@@ -149,6 +151,7 @@ class SimulationManager:
             "status": "success",
             "step": self.step_count,
             "is_running": self.is_running,
+            "strategy": self.context.scheduler.strategy.name,  # 调度策略名称（枚举key）
             "vehicles": [
                 {
                     "id": car.car_id,
@@ -167,20 +170,20 @@ class SimulationManager:
                         "id": order.order_id,
                         "pickup": order.pickup_point,
                         "delivery": order.delivery_point,
-                        "priority": getattr(order, "priority", "normal"),
+                        "priority": getattr(order, "priority", 1),
                     }
-                    for order in self.context.order_agent.pending_orders
+                    for order in self.context.order_agent.get_pending_orders()
                 ],
                 "statistics": self.context.order_agent.report(),
             },
             "grid": {
                 "size": self.context.grid_env.size,
                 "obstacles": self._get_obstacles(),
-                "charging_stations": self.context.grid_env.charging_stations,
+                "charging_stations": self._get_charging_stations_status(),
             },
             "statistics": self.context.get_statistics(),
             "config": {
-                "strategy": self.context.scheduler.strategy.value,
+                "strategy": self.context.scheduler.strategy.name,
                 "grid_size": self.context.grid_env.size,
                 "num_cars": len(self.context.cars),
             },
@@ -214,6 +217,34 @@ class SimulationManager:
                 if cell == "#":
                     obstacles.append([j, i])  # 转换为(x,y)坐标
         return obstacles
+
+    def _get_charging_stations_status(self) -> List[Dict]:
+        """
+        获取充电站详细状态
+        Returns:
+            充电站状态列表，包含位置、排队、使用率等信息
+        """
+        manager = self.context.grid_env.get_charging_station_manager()
+        stations_status = []
+
+        for station in manager.stations.values():
+            status = station.get_status_summary()
+            # 转换为前端友好的格式
+            stations_status.append(
+                {
+                    "id": status["station_id"],
+                    "position": list(status["position"]),
+                    "capacity": status["capacity"],
+                    "available_slots": status["available_slots"],
+                    "charging_vehicles": status["charging_vehicles"],
+                    "queue_length": status["queue_length"],
+                    "waiting_queue": status["waiting_queue"],
+                    "utilization_rate": status["utilization_rate"],
+                    "total_charged": status["total_charged"],
+                }
+            )
+
+        return stations_status
 
     def _auto_step_loop(self):
         """自动步进循环"""
@@ -354,26 +385,61 @@ async def create_order(order: OrderCreate):
 
 @app.get("/api/strategies")
 async def get_strategies():
-    """获取可用的调度策略"""
+    """获取可用的调度策略（课程实验版 - 3个核心AI策略）"""
     return {
         "strategies": [
             {
                 "key": "GREEDY_NEAREST",
-                "name": "贪心最近策略",
-                "description": "为每个订单选择最近的车辆",
-            },
-            {"key": "HUNGARIAN", "name": "匈牙利算法", "description": "全局最优分配算法"},
-            {
-                "key": "VRP_BATCHING",
-                "name": "VRP拼单策略",
-                "description": "车辆路径优化，支持多订单拼单",
+                "name": "贪心最近算法",
+                "description": "启发式算法 - 为每个订单选择最近的车辆",
+                "category": "启发式",
             },
             {
-                "key": "MAPF_CBS",
-                "name": "MAPF CBS协调",
-                "description": "冲突感知搜索，全局协调规划",
+                "key": "AUCTION_CNP",
+                "name": "拍卖机制(CNP)",
+                "description": "多智能体协商 - 合同网协议车辆竞标",
+                "category": "多智能体",
+            },
+            {
+                "key": "RL_SCHEDULER",
+                "name": "强化学习调度",
+                "description": "深度强化学习 - DQN/PPO智能决策",
+                "category": "深度学习",
             },
         ]
+    }
+
+
+@app.get("/api/auction/logs")
+async def get_auction_logs():
+    """获取拍卖日志"""
+    if not sim_manager.context:
+        raise HTTPException(status_code=400, detail="仿真未创建")
+
+    scheduler = sim_manager.context.scheduler
+
+    # 获取最近的拍卖历史
+    auction_history = []
+    if hasattr(scheduler, "assignment_history") and scheduler.assignment_history:
+        # 获取最近10条记录
+        recent_history = scheduler.assignment_history[-10:]
+
+        for record in recent_history:
+            if "auction_logs" in record:
+                auction_history.append(
+                    {
+                        "timestamp": record.get("timestamp", ""),
+                        "strategy": record.get("strategy", ""),
+                        "total_auctions": record.get("total_auctions", 0),
+                        "successful_auctions": record.get("successful_auctions", 0),
+                        "logs": record.get("auction_logs", []),
+                    }
+                )
+
+    return {
+        "status": "success",
+        "auction_history": auction_history,
+        "total_records": len(auction_history),
     }
 
 
@@ -410,19 +476,40 @@ async def add_order(order: OrderCreate):
 
 @app.post("/api/orders/random")
 async def add_random_order():
-    """添加随机订单"""
+    """添加随机订单（确保不在障碍物上）"""
     if not sim_manager.context:
         raise HTTPException(status_code=400, detail="仿真未创建")
 
     import random
 
     grid_size = sim_manager.context.grid_env.size
-    pickup = (random.randint(0, grid_size - 1), random.randint(0, grid_size - 1))
-    delivery = (random.randint(0, grid_size - 1), random.randint(0, grid_size - 1))
+    grid = sim_manager.context.grid_env.grid
+
+    def is_obstacle(x, y):
+        """检查位置是否为障碍物"""
+        return grid[x][y] == "#"
+
+    def get_valid_position():
+        """生成一个不在障碍物上的随机位置"""
+        max_attempts = 100
+        for _ in range(max_attempts):
+            x = random.randint(0, grid_size - 1)
+            y = random.randint(0, grid_size - 1)
+            if not is_obstacle(x, y):
+                return (x, y)
+        # 如果100次都没找到，返回第一个非障碍物位置
+        for x in range(grid_size):
+            for y in range(grid_size):
+                if not is_obstacle(x, y):
+                    return (x, y)
+        raise HTTPException(status_code=500, detail="无法找到有效位置，地图可能被障碍物填满")
+
+    pickup = get_valid_position()
+    delivery = get_valid_position()
 
     # 确保取货点和送货点不同
     while pickup == delivery:
-        delivery = (random.randint(0, grid_size - 1), random.randint(0, grid_size - 1))
+        delivery = get_valid_position()
 
     result = sim_manager.add_order(pickup, delivery)
     if result["status"] == "error":
@@ -607,7 +694,9 @@ async def get_communication_logs():
                 "type": "status_report",
                 "sender": f"Vehicle-{car.car_id}",
                 "receiver": "Scheduler",
-                "message": f"Position: {car.position}, Status: {'idle' if car.is_idle() else 'busy'}",
+                "message": (
+                    f"Position: {car.position}, " f"Status: {'idle' if car.is_idle() else 'busy'}"
+                ),
                 "priority": "normal",
             }
         )
@@ -632,8 +721,8 @@ async def get_communication_logs():
         "logs": logs[-20:],
         "total_messages": len(logs),
         "communication_stats": {
-            "status_reports": len([l for l in logs if l["type"] == "status_report"]),
-            "task_assignments": len([l for l in logs if l["type"] == "task_assignment"]),
+            "status_reports": len([log for log in logs if log["type"] == "status_report"]),
+            "task_assignments": len([log for log in logs if log["type"] == "task_assignment"]),
         },
     }
 
@@ -722,6 +811,11 @@ async def get_performance_metrics():
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket实时仿真数据推送"""
     await websocket.accept()
+
+    # 保存事件循环引用（用于从同步线程调度异步任务）
+    if sim_manager.event_loop is None:
+        sim_manager.event_loop = asyncio.get_event_loop()
+
     sim_manager.add_websocket_client(websocket)
 
     try:

@@ -178,17 +178,26 @@ class SimulationContext:
         for car in self.cars:
             # 处理充电状态
             if car.state.name == "CHARGING":
-                car.charge_step()
+                completed = car.charge_step()
+                if completed:
+                    # 充电完成，释放充电位
+                    car.release_charging_slot_if_needed(self.grid_env)
                 continue
 
-            # 检查是否需要充电（严重低电时强制充电）
-            if car.is_critical_battery() and car.state.name not in ["MOVING_TO_CHARGE", "CHARGING"]:
-                nearest_station = self.grid_env.get_nearest_charging_station(car.position)
-                if nearest_station:
-                    # 如果正在执行任务，取消任务（低电优先）
-                    if car.current_order_id:
+            # 智能充电决策（三级优先级系统）
+            if car.state.name not in ["MOVING_TO_CHARGE", "CHARGING"]:
+                station_pos = car.decide_charging_action(self.grid_env)
+                if station_pos:
+                    # 需要充电
+                    battery_pct = car.get_battery_percentage()
+
+                    # 如果是严重低电（<10%），强制取消当前任务
+                    if battery_pct < 10 and car.current_order_id:
                         self.order_agent.cancel_order(car.current_order_id)
-                    car.start_charging(nearest_station)
+                        print(f"⚠️ 车辆{car.car_id}因严重低电取消订单#{car.current_order_id}")
+
+                    # 向充电站请求充电位
+                    car.request_charging_from_station(self.grid_env, station_pos)
 
             # 处理前往充电站的移动
             if car.state.name == "MOVING_TO_CHARGE":

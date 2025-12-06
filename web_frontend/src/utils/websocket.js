@@ -30,8 +30,7 @@ class WebSocketManager {
     this.reconnectInterval = 3000;
     this.heartbeatInterval = 30000;
     this.url = `ws://${location.host}/ws/simulation`;
-    this.isFirstConnection = true; // 标记是否首次连接
-    this.shouldReconnect = true; // 是否应该重连
+    this.isDisabled = false; // 控制是否完全禁用WebSocket
 
     // 如果是开发环境，使用固定端口
     if (process.env.NODE_ENV === "development") {
@@ -43,6 +42,12 @@ class WebSocketManager {
    * 建立WebSocket连接
    */
   connect() {
+    // 检查是否应该连接
+    if (this.isDisabled) {
+      console.log("⏸️ WebSocket已禁用");
+      return;
+    }
+
     try {
       console.log(`🔗 正在连接WebSocket: ${this.url}`);
 
@@ -76,16 +81,13 @@ class WebSocketManager {
     // 启动心跳
     this.startHeartbeat();
 
-    // 只在首次连接时显示通知，避免重连时频繁弹窗
-    if (this.isFirstConnection) {
-      ElNotification({
-        title: "连接成功",
-        message: "WebSocket连接已建立",
-        type: "success",
-        duration: 2000,
-      });
-      this.isFirstConnection = false;
-    }
+    // 显示连接成功通知
+    ElNotification({
+      title: "连接成功",
+      message: "WebSocket连接已建立",
+      type: "success",
+      duration: 2000,
+    });
   }
 
   /**
@@ -124,6 +126,7 @@ class WebSocketManager {
         store.dispatch("updateSimulation", {
           isRunning: data.is_running,
           step: data.step,
+          strategy: data.strategy || "", // 添加策略字段
           vehicles: data.vehicles || [],
           orders: data.orders || { pending: [], statistics: {} },
           grid: data.grid || { size: 15, obstacles: [], charging_stations: [] },
@@ -148,8 +151,8 @@ class WebSocketManager {
     // 停止心跳
     this.stopHeartbeat();
 
-    // 如果不是正常关闭且应该重连，尝试重连
-    if (event.code !== 1000 && this.shouldReconnect) {
+    // 如果不是正常关闭，尝试重连
+    if (event.code !== 1000) {
       this.scheduleReconnect();
     }
   }
@@ -204,9 +207,9 @@ class WebSocketManager {
    * 安排重连
    */
   async scheduleReconnect() {
-    // 检查是否应该重连
-    if (!this.shouldReconnect) {
-      console.log("⏸️ 已停止自动重连");
+    // 如果已禁用，不再重连
+    if (this.isDisabled) {
+      console.log("⏸️ WebSocket已禁用，停止重连");
       return;
     }
 
@@ -215,12 +218,12 @@ class WebSocketManager {
         `❌ 重连失败，已达到最大尝试次数 (${this.maxReconnectAttempts})`
       );
 
-      // 停止自动重连
-      this.shouldReconnect = false;
+      // 禁用WebSocket，防止继续重连
+      this.isDisabled = true;
 
       ElNotification({
         title: "连接失败",
-        message: `WebSocket重连失败，请刷新页面或检查后端服务`,
+        message: `WebSocket连接失败，已停止重试。请检查后端服务是否运行。`,
         type: "error",
         duration: 0, // 不自动关闭
       });
@@ -261,7 +264,7 @@ class WebSocketManager {
 
     this.disconnect();
     this.reconnectAttempts = 0;
-    this.shouldReconnect = true; // 重置重连标志
+    this.isDisabled = false; // 重新启用
 
     const store = await getStore();
     if (store) {
@@ -279,8 +282,8 @@ class WebSocketManager {
   disconnect() {
     console.log("🔌 断开WebSocket连接");
 
-    // 停止自动重连
-    this.shouldReconnect = false;
+    // 禁用自动重连
+    this.isDisabled = true;
 
     // 清理定时器
     if (this.reconnectTimer) {

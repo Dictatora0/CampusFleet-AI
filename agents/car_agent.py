@@ -57,9 +57,9 @@ class CarAgent:
         self.delivery_point: Optional[Tuple[int, int]] = None
 
         # VRP多订单支持
-        self.task_queue: List[Dict] = (
-            []
-        )  # 任务队列 [{'type': 'pickup'/'delivery', 'order_id': str, 'location': tuple}]
+        self.task_queue: List[
+            Dict
+        ] = []  # 任务队列 [{'type': 'pickup'/'delivery', 'order_id': str, 'location': tuple}]
         self.current_capacity = 0  # 当前载货量
         self.max_capacity = 3  # 最大载货量
 
@@ -544,8 +544,25 @@ class CarAgent:
         return False
 
     def consume_battery(self):
-        """消耗电量（移动时调用）"""
-        self.battery = max(0, self.battery - self.battery_consumption_rate)
+        """
+        消耗电量（非线性模型）
+        考虑因素：
+        - 基础消耗：battery_consumption_rate
+        - 载货惩罚：每个订单增加30%消耗
+        - 速度惩罚：速度超过1时每单位增加20%消耗
+        """
+        base_consumption = self.battery_consumption_rate
+
+        # 载货惩罚系数
+        load_penalty = 0.3 * self.current_capacity
+
+        # 速度惩罚系数
+        speed_penalty = 0.2 * max(0, self.speed - 1)
+
+        # 总消耗 = 基础 × (1 + 载货系数 + 速度系数)
+        total_consumption = base_consumption * (1.0 + load_penalty + speed_penalty)
+
+        self.battery = max(0, self.battery - total_consumption)
 
     def get_battery_percentage(self) -> float:
         """
@@ -554,6 +571,87 @@ class CarAgent:
             电量百分比 (0-100)
         """
         return (self.battery / self.max_battery) * 100
+
+    def decide_charging_action(self, grid_env) -> Optional[Tuple[int, int]]:
+        """
+        智能充电决策（三级优先级）
+        Args:
+            grid_env: 网格环境（包含充电站管理器）
+        Returns:
+            充电站位置，如果不需要充电则返回None
+        """
+        battery_pct = self.get_battery_percentage()
+
+        # 优先级1: 严重低电（<10%） - 强制充电
+        if battery_pct < 10:
+            # 立即放弃当前任务，寻找最近充电站
+            station = grid_env.get_nearest_charging_station(self.position)
+            if station:
+                print(f"🚨 车辆{self.car_id}严重低电({battery_pct:.1f}%)，强制充电！")
+                return station
+
+        # 优先级2: 低电量（<30%）且空闲 - 主动充电
+        elif battery_pct < 30 and self.is_idle():
+            station = grid_env.get_nearest_charging_station(self.position)
+            if station:
+                print(f"⚠️ 车辆{self.car_id}电量较低({battery_pct:.1f}%)且空闲，主动充电")
+                return station
+
+        # 优先级3: 中等电量（<50%）且靠近充电站 - 机会充电
+        elif battery_pct < 50 and self.is_idle():
+            station = grid_env.get_nearest_charging_station(self.position)
+            if station:
+                distance = abs(self.position[0] - station[0]) + abs(self.position[1] - station[1])
+                if distance <= 3:  # 距离充电站3格以内
+                    print(f"💡 车辆{self.car_id}顺路充电({battery_pct:.1f}%)，距离{distance}格")
+                    return station
+
+        return None
+
+    def request_charging_from_station(self, grid_env, station_pos: Tuple[int, int]) -> bool:
+        """
+        向充电站请求充电位
+        Args:
+            grid_env: 网格环境
+            station_pos: 充电站位置
+        Returns:
+            是否成功请求（True=分配到充电位，False=需要排队）
+        """
+        manager = grid_env.get_charging_station_manager()
+        station = manager.get_station_at(station_pos)
+
+        if not station:
+            return False
+
+        # 请求充电
+        got_slot = station.request_charging(self.car_id)
+
+        if got_slot:
+            # 立即分配到充电位
+            self.start_charging(station_pos)
+            print(f"✅ 车辆{self.car_id}获得充电位，开始前往充电站{station_pos}")
+        else:
+            # 加入排队，仍然前往充电站
+            queue_pos = station.get_queue_length()
+            print(f"⏳ 车辆{self.car_id}加入排队（第{queue_pos}位），前往充电站{station_pos}")
+            self.start_charging(station_pos)  # 前往充电站等待
+
+        return got_slot
+
+    def release_charging_slot_if_needed(self, grid_env):
+        """
+        充电完成后释放充电位
+        Args:
+            grid_env: 网格环境
+        """
+        if self.state == CarState.IDLE and self.charging_station:
+            # 刚完成充电，释放充电位
+            manager = grid_env.get_charging_station_manager()
+            station = manager.get_station_at(self.charging_station)
+            if station:
+                station.release_slot(self.car_id)
+                print(f"🔓 车辆{self.car_id}释放充电位，电量{self.get_battery_percentage():.1f}%")
+                self.charging_station = None
 
     def _try_avoid(self, pathfinder, blocked_positions: Set[Tuple[int, int]]) -> bool:
         """

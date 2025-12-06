@@ -40,6 +40,7 @@ const store = createStore({
     simulation: {
       isRunning: false,
       step: 0,
+      strategy: "", // 当前调度策略
       vehicles: [],
       orders: {
         pending: [],

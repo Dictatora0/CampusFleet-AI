@@ -133,6 +133,14 @@ export const simulationAPI = {
   },
 
   /**
+   * 创建随机订单
+   * @returns {Promise}
+   */
+  createRandomOrder() {
+    return api.post("/orders/random");
+  },
+
+  /**
    * 获取可用策略
    * @returns {Promise}
    */
@@ -150,62 +158,40 @@ export const simulationAPI = {
 };
 
 /**
- * 预设配置
+ * 预设配置（课程实验版 - 3个核心AI策略）
  */
 export const presetConfigs = {
   /**
-   * 小规模测试
+   * 贪心算法演示（启发式）
    */
-  small: {
-    grid_size: 8,
-    num_cars: 2,
-    strategy: "GREEDY_NEAREST",
-    enable_logging: true,
-    auto_step_interval: 1.0,
-  },
-
-  /**
-   * 中等规模演示
-   */
-  medium: {
+  greedy: {
     grid_size: 12,
     num_cars: 4,
-    strategy: "VRP_BATCHING",
+    strategy: "GREEDY_NEAREST",
     enable_logging: true,
     auto_step_interval: 0.8,
   },
 
   /**
-   * 大规模仿真
+   * 拍卖机制演示（多智能体）
    */
-  large: {
+  auction: {
     grid_size: 15,
     num_cars: 6,
-    strategy: "MAPF_CBS",
+    strategy: "AUCTION_CNP",
     enable_logging: true,
     auto_step_interval: 0.5,
   },
 
   /**
-   * MAPF协调演示
+   * 强化学习演示（深度学习）
    */
-  mapfDemo: {
-    grid_size: 10,
-    num_cars: 3,
-    strategy: "MAPF_CBS",
-    enable_logging: true,
-    auto_step_interval: 1.5,
-  },
-
-  /**
-   * VRP拼单演示
-   */
-  vrpDemo: {
+  rl: {
     grid_size: 12,
-    num_cars: 2,
-    strategy: "VRP_BATCHING",
+    num_cars: 5,
+    strategy: "RL_SCHEDULER",
     enable_logging: true,
-    auto_step_interval: 1.2,
+    auto_step_interval: 1.0,
   },
 };
 
