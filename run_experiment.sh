@@ -46,6 +46,33 @@ ${GREEN}示例:${NC}
   $0 15 6 20 AUCTION_CNP         # 拍卖机制（多智能体协商）实验
   $0 15 6 20 RL_SCHEDULER        # 强化学习调度实验
 
+${YELLOW}📋 报告准备完整流程（详见 README_AUTO_EXPERIMENT.md）:${NC}
+
+  ${BLUE}步骤 1: 运行对比实验${NC}
+    ./run_experiment.sh 15 6 20 GREEDY_NEAREST
+    ./stop_experiment.sh
+    mv assignment_data assignment_data_GREEDY_NEAREST
+
+    ./run_experiment.sh 15 6 20 AUCTION_CNP
+    ./stop_experiment.sh
+    mv assignment_data assignment_data_AUCTION_CNP
+
+  ${BLUE}步骤 2: 采集截图（运行实验时）${NC}
+    访问 http://localhost:3000/multi-agent    # 监控面板（4 张）
+    访问 http://localhost:3000/              # 拍卖日志 + 充电站（5-6 张）
+    运行 python run_with_gui.py             # GUI 仿真（3-5 张）
+
+  ${BLUE}步骤 3: 整理报告素材${NC}
+    - 检查 assignment_data_*/plots/ 目录下的图表（4-6 张/策略）
+    - 整理所有截图到 assignment_data_AUCTION_CNP/screenshots/
+    - 查看 experiment_summary.txt 获取关键数值
+
+  ${BLUE}步骤 4: 撰写报告第 6 章${NC}
+    - 使用图表对比调度策略（完成率、车辆利用率、性能雷达）
+    - 展示拍卖机制（成本分布图 + 拍卖日志截图）
+    - 展示充电系统（利用率图 + Canvas 截图）
+    - 展示多智能体监控（监控面板 + GUI 截图）
+
 ${GREEN}输出:${NC}
   - JSON数据: assignment_data/json_data/*.json
   - CSV日志:  assignment_data/csv_exports/*.csv
