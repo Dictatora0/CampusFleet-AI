@@ -414,10 +414,11 @@ echo "导出完整运行日志（CSV 格式）..."
 EXPORT_RESPONSE=$(curl -s "http://localhost:8001/api/analytics/export")
 
 # 检查响应是否有效
-if echo "$EXPORT_RESPONSE" | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); exit(0 if 'data' in data else 1)" 2>/dev/null; then
+if echo "$EXPORT_RESPONSE" | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); exit(0 if data.get('status') == 'success' and 'data' in data else 1)" 2>/dev/null; then
     echo "$EXPORT_RESPONSE" | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); print(data['data'])" \
       > "$DATA_DIR/csv_exports/simulation_frames.csv"
-    echo -e "${GREEN}✅ 运行日志已导出${NC}"
+    RECORD_COUNT=$(echo "$EXPORT_RESPONSE" | $PYTHON_CMD -c "import sys, json; data=json.load(sys.stdin); print(data.get('record_count', 0))" 2>/dev/null)
+    echo -e "${GREEN}✅ 运行日志已导出（${RECORD_COUNT} 条记录）${NC}"
 else
     echo -e "${YELLOW}⚠️  CSV导出失败或无数据，跳过此步骤${NC}"
     echo "$EXPORT_RESPONSE" > "$DATA_DIR/csv_exports/export_error.json"

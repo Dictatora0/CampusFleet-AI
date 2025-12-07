@@ -1,0 +1,8 @@
+{
+  "start_time": "2025-12-07T15:44:02.162859",
+  "grid_size": 15,
+  "num_cars": 3,
+  "scheduling_strategy": "RL Scheduler",
+  "end_time": "2025-12-07T15:44:21.571422",
+  "total_frames": 131
+}

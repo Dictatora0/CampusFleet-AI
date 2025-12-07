@@ -1,0 +1,8 @@
+{
+  "start_time": "2025-12-07T15:45:06.337375",
+  "grid_size": 15,
+  "num_cars": 3,
+  "scheduling_strategy": "Greedy Nearest",
+  "end_time": "2025-12-07T15:45:23.071325",
+  "total_frames": 105
+}

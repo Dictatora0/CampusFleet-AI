@@ -18,6 +18,7 @@ class SimulationContext:
         num_cars: int = 3,
         scheduling_strategy: SchedulingStrategy = SchedulingStrategy.GREEDY_NEAREST,
         enable_data_logging: bool = True,
+        log_dir: str = "simulation_logs",
     ):
         """
         初始化仿真上下文
@@ -26,6 +27,7 @@ class SimulationContext:
             num_cars: 车辆数量
             scheduling_strategy: 调度策略
             enable_data_logging: 是否启用数据记录
+            log_dir: 日志输出目录
         """
         # 环境
         self.grid_env = GridEnvironment(size=grid_size)
@@ -47,7 +49,7 @@ class SimulationContext:
 
         # 数据记录
         self.enable_data_logging = enable_data_logging
-        self.data_logger = DataLogger() if enable_data_logging else None
+        self.data_logger = DataLogger(output_dir=log_dir) if enable_data_logging else None
         if self.data_logger:
             self.data_logger.set_metadata(
                 grid_size=grid_size, num_cars=num_cars, strategy=scheduling_strategy.value

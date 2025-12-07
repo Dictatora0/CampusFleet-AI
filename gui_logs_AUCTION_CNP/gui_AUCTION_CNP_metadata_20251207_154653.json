@@ -1,0 +1,8 @@
+{
+  "start_time": "2025-12-07T15:46:35.363543",
+  "grid_size": 15,
+  "num_cars": 3,
+  "scheduling_strategy": "Auction CNP",
+  "end_time": "2025-12-07T15:46:53.724372",
+  "total_frames": 122
+}

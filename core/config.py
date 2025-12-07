@@ -113,6 +113,37 @@ class WebConfig:
         return True
 
 
+@dataclass
+class DemoConfig:
+    """演示/测试配置"""
+
+    small_grid_size: int = 8
+    small_num_cars: int = 2
+    test_num_orders: int = 10
+
+    def validate(self) -> bool:
+        """验证配置有效性"""
+        if self.test_num_orders < 1:
+            raise ValueError("test_num_orders must be positive")
+        return True
+
+
+@dataclass
+class VisualizationConfig:
+    """可视化配置"""
+
+    cell_size: int = 40
+    fps: int = 10
+
+    def validate(self) -> bool:
+        """验证配置有效性"""
+        if self.cell_size < 10 or self.cell_size > 100:
+            raise ValueError("cell_size must be between 10 and 100")
+        if self.fps < 1 or self.fps > 60:
+            raise ValueError("fps must be between 1 and 60")
+        return True
+
+
 class ConfigManager:
     """配置管理器"""
 
@@ -121,6 +152,8 @@ class ConfigManager:
         self.car = CarConfig()
         self.rl = RLConfig()
         self.web = WebConfig()
+        self.demo = DemoConfig()
+        self.visualization = VisualizationConfig()
 
     def load_from_file(self, config_file: str):
         """从 JSON 文件加载配置"""
@@ -140,6 +173,10 @@ class ConfigManager:
             self.rl = RLConfig(**config_data["rl"])
         if "web" in config_data:
             self.web = WebConfig(**config_data["web"])
+        if "demo" in config_data:
+            self.demo = DemoConfig(**config_data["demo"])
+        if "visualization" in config_data:
+            self.visualization = VisualizationConfig(**config_data["visualization"])
 
         # 验证所有配置
         self.validate_all()
@@ -151,6 +188,8 @@ class ConfigManager:
             "car": self.car.__dict__,
             "rl": self.rl.__dict__,
             "web": self.web.__dict__,
+            "demo": self.demo.__dict__,
+            "visualization": self.visualization.__dict__,
         }
 
         config_path = Path(config_file)
@@ -165,6 +204,8 @@ class ConfigManager:
         self.car.validate()
         self.rl.validate()
         self.web.validate()
+        self.demo.validate()
+        self.visualization.validate()
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -173,6 +214,8 @@ class ConfigManager:
             "car": self.car.__dict__,
             "rl": self.rl.__dict__,
             "web": self.web.__dict__,
+            "demo": self.demo.__dict__,
+            "visualization": self.visualization.__dict__,
         }
 
 

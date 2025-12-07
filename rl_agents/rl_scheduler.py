@@ -134,9 +134,42 @@ class RLScheduler:
 
     def _get_simulation_context(self, idle_cars, orders, grid_env):
         """尝试获取仿真上下文 (从全局状态或其他方式)"""
-        # 这里需要根据实际集成方式获取context
-        # 临时返回None，在实际集成时实现
-        return None
+
+        # 简化版：直接构造一个简单的上下文对象用于状态编码
+        # 包含必要的环境信息即可
+        class SimpleContext:
+            def __init__(self, cars, orders, grid_env):
+                self.cars = cars
+                self.orders = orders if hasattr(orders, "__iter__") else []
+                self.grid_env = grid_env
+                self.grid_size = grid_env.size if hasattr(grid_env, "size") else 15
+                self.step_count = 0
+
+                # 创建一个简化的 order_agent 模拟对象
+                class SimpleOrderAgent:
+                    def __init__(self, orders):
+                        self._orders = orders
+
+                    def get_pending_orders(self):
+                        """返回待处理订单"""
+                        return [o for o in self._orders if hasattr(o, "order_id")]
+
+                self.order_agent = SimpleOrderAgent(orders)
+
+            def get_statistics(self):
+                """返回简单的统计信息"""
+                return {
+                    "total_orders": len(self.orders),
+                    "total_completed_orders": 0,
+                    "completion_rate": 0.0,
+                    "avg_distance_per_order": 10.0,
+                    "avg_completion_time": 50.0,
+                    "current_active_orders": len(self.orders),
+                    "idle_vehicles": len([c for c in self.cars if c.state.value == "Idle"]),
+                    "avg_vehicle_utilization": 0.5,
+                }
+
+        return SimpleContext(idle_cars, orders, grid_env)
 
     def _select_rl_actions(
         self, state: np.ndarray, idle_cars: List, orders: List[Order]

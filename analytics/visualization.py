@@ -258,14 +258,15 @@ class DataVisualizer:
             return
 
         # 计算等待时间（从创建到分配）
-        created = orders_df[orders_df["event_type"] == "created"].set_index("order_id")
-        assigned = orders_df[orders_df["event_type"] == "assigned"].set_index("order_id")
+        created = orders_df[orders_df["event_type"] == "created"].groupby("order_id").first()
+        assigned = orders_df[orders_df["event_type"] == "assigned"].groupby("order_id").first()
 
         waiting_times = []
         for order_id in created.index:
             if order_id in assigned.index:
                 wait_time = assigned.loc[order_id, "step"] - created.loc[order_id, "step"]
-                waiting_times.append(wait_time)
+                if wait_time >= 0:  # 只记录有效的等待时间
+                    waiting_times.append(wait_time)
 
         if not waiting_times:
             print("⚠️ 没有足够的订单数据计算等待时间")
@@ -299,7 +300,7 @@ class DataVisualizer:
 
         # 箱型图
         ax2.boxplot(
-            waiting_times,
+            [waiting_times],  # 将数据包装在列表中以确保是单个数据集
             vert=True,
             patch_artist=True,
             boxprops=dict(facecolor="lightblue", alpha=0.7),

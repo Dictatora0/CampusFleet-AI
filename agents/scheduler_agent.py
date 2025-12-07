@@ -639,11 +639,12 @@ class SchedulerAgent:
                 training_mode=True,
             )
 
+            # DQN 推理模型需要使用训练时的配置参数
             self.rl_schedulers["DQN_INFERENCE"] = RLScheduler(
                 agent_type="DQN",
-                grid_size=grid_size,
-                max_cars=max_cars,
-                max_orders=max_orders,
+                grid_size=10,  # 训练时使用的配置
+                max_cars=5,  # 训练时使用的配置
+                max_orders=10,  # 训练时使用的配置
                 model_path=os.path.join(model_dir, "best_dqn_model.pth"),
                 training_mode=False,
             )
@@ -688,6 +689,18 @@ class SchedulerAgent:
         """
         strategy_key = self.strategy.value.replace(" ", "_").upper()
 
+        # 如果是 RL_SCHEDULER，使用预训练的 DQN 推理模型
+        if strategy_key == "RL_SCHEDULER":
+            if "DQN_INFERENCE" in self.rl_schedulers:
+                strategy_key = "DQN_INFERENCE"
+                # 只在第一次打印，避免刷屏c
+                if not hasattr(self, "_rl_init_logged"):
+                    print(f"🤖 使用预训练 DQN 模型进行调度")
+                    self._rl_init_logged = True
+            else:
+                print(f"⚠️ 没有找到 DQN 推理模型，回退到贪心策略")
+                return self._greedy_nearest_schedule(cars, orders, grid_env)
+
         # 检查是否有对应的RL调度器
         if strategy_key not in self.rl_schedulers:
             print(f"⚠️ 没有找到RL调度器: {strategy_key}, 回退到贪心策略")
@@ -698,6 +711,15 @@ class SchedulerAgent:
 
             # 使用RL调度器进行决策
             rl_assignments = rl_scheduler.schedule(cars, orders, grid_env)
+
+            # 调试信息：显示RL调度器的输出
+            if not hasattr(self, "_rl_debug_count"):
+                self._rl_debug_count = 0
+            self._rl_debug_count += 1
+            if self._rl_debug_count <= 3:  # 只打印前3次
+                print(f"   RL调度器返回: {len(rl_assignments) if rl_assignments else 0} 个分配")
+                if not rl_assignments or len(rl_assignments) == 0:
+                    print(f"   可用车辆: {len(cars)}, 待分配订单: {len(orders)}")
 
             # 转换RL分配格式 (car_id, order_id) -> (car_id, order_id, pickup, delivery)
             assignments = []

@@ -39,20 +39,37 @@ def main():
     num_orders = config.demo.test_num_orders
     max_steps = config.simulation.max_steps
 
-    # 选择调度策略
+    # 选择调度策略（三大核心策略）
     print("\n请选择调度策略:")
-    print("1. 贪心最近策略 (GREEDY_NEAREST)")
-    print("2. 负载均衡策略 (BALANCED_LOAD)")
-    print("3. 匈牙利算法 (HUNGARIAN)")
+    print("1. 贪心最近策略 (GREEDY_NEAREST) - 启发式基线")
+    print("2. 拍卖机制 (AUCTION_CNP) - 多智能体协商")
+    print("3. 强化学习调度 (RL_SCHEDULER) - AI 智能调度")
 
     choice = input("输入选择 (1/2/3, 默认1): ").strip() or "1"
 
     if choice == "2":
-        strategy = SchedulingStrategy.BALANCED_LOAD
+        strategy = SchedulingStrategy.AUCTION_CNP
+        strategy_name = "AUCTION_CNP"
     elif choice == "3":
-        strategy = SchedulingStrategy.HUNGARIAN
+        strategy = SchedulingStrategy.RL_SCHEDULER
+        strategy_name = "RL_SCHEDULER"
     else:
         strategy = SchedulingStrategy.GREEDY_NEAREST
+        strategy_name = "GREEDY_NEAREST"
+
+    # 为每个策略创建独立的输出目录
+    output_dir = f"gui_logs_{strategy_name}"
+
+    # 清理旧数据：删除该策略的旧结果
+    import shutil
+
+    if os.path.exists(output_dir):
+        print(f"\n🗑️  删除旧数据: {output_dir}/")
+        shutil.rmtree(output_dir)
+
+    # 创建新的输出目录
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"📁 数据将保存到目录: {output_dir}/")
 
     # 初始化仿真上下文
     context = SimulationContext(
@@ -60,6 +77,7 @@ def main():
         num_cars=num_cars,
         scheduling_strategy=strategy,
         enable_data_logging=True,
+        log_dir=output_dir,  # 使用策略特定的目录
     )
 
     # 预先生成订单
@@ -141,9 +159,9 @@ def main():
         )
     print("=" * 60)
 
-    # 导出数据
-    print("\n正在导出数据和生成图表...")
-    exported_files = context.export_data()
+    # 导出数据（使用策略名称作为文件前缀）
+    print(f"\n正在导出数据和生成图表（策略: {strategy_name}）...")
+    exported_files = context.export_data(filename_prefix=f"gui_{strategy_name}")
 
     if exported_files:
         try:
@@ -162,14 +180,21 @@ def main():
                     orders_csv = file_path
 
             if frames_csv and cars_csv:
-                visualizer = DataVisualizer()
+                visualizer = DataVisualizer(output_dir=output_dir)  # 使用策略特定目录
                 visualizer.generate_all_plots(frames_csv, cars_csv, orders_csv, grid_size)
-                print("图表生成完成")
+                print(f"图表已保存到: {output_dir}/")
         except Exception as e:
             print(f"警告: 生成图表时出错: {e}")
 
     # 关闭Pygame
     viewer.close()
+
+    # 最终提示
+    print(f"\n实验完成！数据已保存到: {output_dir}/")
+    print("\n💡 提示: 运行不同策略的实验，数据会自动保存到不同目录:")
+    print("   - gui_logs_GREEDY_NEAREST/")
+    print("   - gui_logs_AUCTION_CNP/")
+    print("   - gui_logs_RL_SCHEDULER/")
 
 
 if __name__ == "__main__":
